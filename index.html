@@ -3,13 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Wordle</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div id = "header">
-    <div id="Title" >Wordle</div>
-    </div>
+    <main class="game-shell">
+      <header class="header"><h1>WORDLE</h1><p>Find the hidden word.</p></header>
+      <section class="controls" aria-label="Game settings">
+        <label for="word-length">Word length
+          <select id="word-length" aria-describedby="guess-rule"><option value="5">5 letters</option><option value="6">6 letters</option><option value="7">7 letters</option><option value="8">8 letters</option></select>
+        </label>
+        <button id="new-game" type="button">New game</button>
+        <p id="guess-rule">5-letter games get 6 guesses. Longer words get one extra guess per letter.</p>
+      </section>
+      <section class="game" aria-label="Wordle game">
+        <p id="game-status" class="status" aria-live="polite"></p>
+        <div id="board" class="board" aria-label="Guess board"></div>
+        <form id="guess-form" class="guess-form" novalidate>
+          <label class="sr-only" for="guess-input">Your guess</label>
+          <input id="guess-input" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="5" placeholder="Enter a word">
+          <button id="guess-button" type="submit">Guess</button>
+        </form>
+        <div id="keyboard" class="keyboard" aria-label="Letter keyboard"></div>
+      </section>
+      <section class="legend" aria-label="Tile color legend"><span><i class="tile correct"></i> Right letter, right spot</span><span><i class="tile present"></i> Right letter, wrong spot</span><span><i class="tile absent"></i> Not in the word</span></section>
+    </main>
     <script src="script.js"></script>
 </body>
 </html>
