@@ -35,15 +35,10 @@
           spellcheck="false"
           aria-label="Type your guess"
         >
-        <button id="guess-button" type="submit">Guess</button>
+        <button id="guess-button" type="submit">ENTER</button>
       </form>
     </section>
 
-    <section class="legend" aria-label="Tile color legend">
-      <span><i class="tile correct"></i> Right spot</span>
-      <span><i class="tile present"></i> Wrong spot</span>
-      <span><i class="tile absent"></i> Not in word</span>
-    </section>
   </main>
 
   <dialog id="admin-dialog" class="dialog">
@@ -75,6 +70,14 @@
       </form>
       <button id="sign-out-button" class="text-button" type="button">Sign out</button>
     </section>
+  </dialog>
+
+  <dialog id="result-dialog" class="dialog result-dialog">
+    <p id="result-eyebrow" class="eyebrow"></p>
+    <h2 id="result-title"></h2>
+    <p id="result-copy" class="dialog-copy"></p>
+    <p id="next-puzzle" class="next-puzzle"></p>
+    <button id="close-result" type="button">Keep playing</button>
   </dialog>
 
   <script src="script.js"></script>
