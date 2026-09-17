@@ -1,26 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wordle</title>
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A daily Wordle puzzle.">
+  <title>Wordle</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <main class="game-shell">
-      <header class="header"><h1>WORDLE</h1><p>Find the hidden word.</p></header>
-      <p id="guess-rule" class="guess-rule"></p>
-      <section class="game" aria-label="Wordle game">
-        <p id="game-status" class="status" aria-live="polite"></p>
-        <div id="board" class="board" aria-label="Guess board"></div>
-        <form id="guess-form" class="guess-form" novalidate>
-          <label class="sr-only" for="guess-input">Your guess</label>
-          <input id="guess-input" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="5" placeholder="Enter a word">
-          <button id="guess-button" type="submit">Guess</button>
-        </form>
-      </section>
-      <section class="legend" aria-label="Tile color legend"><span><i class="tile correct"></i> Right letter, right spot</span><span><i class="tile present"></i> Right letter, wrong spot</span><span><i class="tile absent"></i> Not in the word</span></section>
-    </main>
-    <script src="script.js"></script>
+  <main class="game-shell">
+    <header class="header">
+      <button id="admin-button" class="icon-button" type="button" aria-label="Admin sign in">
+        ⚙
+      </button>
+      <div>
+        <h1>WORDLE</h1>
+        <p>One word. One challenge.</p>
+      </div>
+    </header>
+
+    <p id="guess-rule" class="guess-rule"></p>
+
+    <section class="game" aria-label="Wordle game">
+      <p id="game-status" class="status" aria-live="polite"></p>
+      <div id="board" class="board" aria-label="Guess board"></div>
+
+      <form id="guess-form" class="guess-form" novalidate>
+        <input
+          id="guess-input"
+          class="keyboard-capture"
+          type="text"
+          autocomplete="off"
+          autocapitalize="characters"
+          spellcheck="false"
+          aria-label="Type your guess"
+        >
+        <button id="guess-button" type="submit">Guess</button>
+      </form>
+    </section>
+
+    <section class="legend" aria-label="Tile color legend">
+      <span><i class="tile correct"></i> Right spot</span>
+      <span><i class="tile present"></i> Wrong spot</span>
+      <span><i class="tile absent"></i> Not in word</span>
+    </section>
+  </main>
+
+  <dialog id="admin-dialog" class="dialog">
+    <button id="close-dialog" class="close-button" type="button" aria-label="Close">×</button>
+
+    <section id="login-panel">
+      <p class="eyebrow">ADMIN AREA</p>
+      <h2>Sign in</h2>
+      <p class="dialog-copy">Set the word players will guess today.</p>
+      <form id="login-form" class="stack-form">
+        <label for="admin-email">Email</label>
+        <input id="admin-email" type="email" autocomplete="username" required>
+        <label for="admin-password">Password</label>
+        <input id="admin-password" type="password" autocomplete="current-password" required>
+        <p id="login-message" class="form-message" aria-live="polite"></p>
+        <button type="submit">Sign in</button>
+      </form>
+    </section>
+
+    <section id="word-panel" hidden>
+      <p class="eyebrow">ADMIN AREA</p>
+      <h2>Set today’s word</h2>
+      <p class="dialog-copy">Use letters only. The word must be at least 5 letters long.</p>
+      <form id="word-form" class="stack-form">
+        <label for="daily-word">Today's word</label>
+        <input id="daily-word" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
+        <p id="word-message" class="form-message" aria-live="polite"></p>
+        <button type="submit">Publish word</button>
+      </form>
+      <button id="sign-out-button" class="text-button" type="button">Sign out</button>
+    </section>
+  </dialog>
+
+  <script src="script.js"></script>
 </body>
 </html>
