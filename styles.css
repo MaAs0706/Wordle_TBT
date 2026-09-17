@@ -1,7 +1,7 @@
 :root {
-  --page: #141720;
-  --panel: #222631;
-  --line: #3e4351;
+  --page: #0e3840;
+  --panel: #173c44;
+  --line: #70999a;
   --text: #f8f8f8;
   --muted: #a1a1a5;
   --correct: #538d4e;
@@ -17,7 +17,13 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
-  background: radial-gradient(circle at top, #222938 0, var(--page) 42rem);
+  background-color: var(--page);
+  background-image:
+    linear-gradient(rgb(4 35 41 / 62%), rgb(4 29 36 / 78%)),
+    url("assets/teal-whimsy-background.png");
+  background-position: center;
+  background-size: cover;
+  background-attachment: fixed;
   color: var(--text);
   font-family: var(--font-display);
 }
