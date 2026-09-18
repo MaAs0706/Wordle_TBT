@@ -1,7 +1,35 @@
-const DEFAULT_WORD = "apple";
-const STORAGE_KEY = "wordle-daily-word";
-const ADMIN_EMAIL = "admin@wordle.local";
-const ADMIN_PASSWORD = "wordle-admin";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import {
+  GoogleAuthProvider,
+  getAuth,
+  onAuthStateChanged,
+  signInWithPopup,
+  signOut,
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import {
+  collection,
+  getFirestore,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import {
+  getFunctions,
+  httpsCallable,
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
+import { firebaseConfig } from "./firebase-config.js";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const database = getFirestore(app);
+const functions = getFunctions(app, "asia-south1");
+const provider = new GoogleAuthProvider();
+
+const startPuzzle = httpsCallable(functions, "startPuzzle");
+const submitPuzzleGuess = httpsCallable(functions, "submitPuzzleGuess");
+const getAdminStatus = httpsCallable(functions, "getAdminStatus");
+const setDailyPuzzle = httpsCallable(functions, "setDailyPuzzle");
 
 const board = document.querySelector("#board");
 const statusMessage = document.querySelector("#game-status");
@@ -9,90 +37,91 @@ const guessRule = document.querySelector("#guess-rule");
 const guessForm = document.querySelector("#guess-form");
 const guessInput = document.querySelector("#guess-input");
 const guessButton = document.querySelector("#guess-button");
-const adminButton = document.querySelector("#admin-button");
-const adminDialog = document.querySelector("#admin-dialog");
-const closeDialogButton = document.querySelector("#close-dialog");
-const loginPanel = document.querySelector("#login-panel");
-const wordPanel = document.querySelector("#word-panel");
-const loginForm = document.querySelector("#login-form");
-const wordForm = document.querySelector("#word-form");
-const loginMessage = document.querySelector("#login-message");
-const wordMessage = document.querySelector("#word-message");
-const dailyWordInput = document.querySelector("#daily-word");
+const streakCount = document.querySelector("#streak-count");
+const leaderboardList = document.querySelector("#leaderboard-list");
+const accountButton = document.querySelector("#account-button");
+const accountDialog = document.querySelector("#account-dialog");
+const closeAccountButton = document.querySelector("#close-account");
+const signedOutPanel = document.querySelector("#signed-out-panel");
+const signedInPanel = document.querySelector("#signed-in-panel");
+const googleSignInButton = document.querySelector("#google-sign-in");
 const signOutButton = document.querySelector("#sign-out-button");
+const accountName = document.querySelector("#account-name");
+const accountCopy = document.querySelector("#account-copy");
+const openAdminButton = document.querySelector("#open-admin");
+const adminDialog = document.querySelector("#admin-dialog");
+const closeAdminButton = document.querySelector("#close-admin");
+const adminWordForm = document.querySelector("#admin-word-form");
+const dailyWordInput = document.querySelector("#daily-word");
+const adminMessage = document.querySelector("#admin-message");
 const resultDialog = document.querySelector("#result-dialog");
 const resultEyebrow = document.querySelector("#result-eyebrow");
 const resultTitle = document.querySelector("#result-title");
 const resultCopy = document.querySelector("#result-copy");
+const resultStreak = document.querySelector("#result-streak");
 const nextPuzzle = document.querySelector("#next-puzzle");
 const closeResultButton = document.querySelector("#close-result");
 
 let game;
-let isAdminSignedIn = false;
-
-function getDailyWord() {
-  return localStorage.getItem(STORAGE_KEY) || DEFAULT_WORD;
-}
-
-function startGame() {
-  const answer = getDailyWord();
-  const wordLength = answer.length;
-
-  game = {
-    answer,
-    wordLength,
-    maxGuesses: wordLength + 1,
-    guesses: [],
-    activeGuess: "",
-    finished: false,
-    shakeActive: false,
-  };
-
-  guessInput.maxLength = wordLength;
-  guessInput.value = "";
-  updateGuessCounter();
-  setStatus(`${game.maxGuesses} guesses to find the word.`);
-  renderBoard();
-  guessInput.focus();
-}
+let isAdmin = false;
+let leaderboardUnsubscribe = () => {};
 
 function setStatus(message, isError = false) {
   statusMessage.textContent = message;
   statusMessage.classList.toggle("error", isError);
 }
 
-function updateGuessCounter() {
-  if (game.finished) {
-    guessRule.textContent = "Puzzle complete";
-    return;
+function setSignedInView(user) {
+  const isSignedIn = Boolean(user);
+
+  accountButton.textContent = isSignedIn ? "Account" : "Sign in";
+  signedOutPanel.hidden = isSignedIn;
+  signedInPanel.hidden = !isSignedIn;
+
+  if (user) {
+    accountName.textContent = user.displayName || "Player";
+    accountCopy.textContent = user.email || "Signed in with Google";
   }
 
-  const currentGuess = Math.min(game.guesses.length + 1, game.maxGuesses);
-  guessRule.textContent = `Guess ${currentGuess} of ${game.maxGuesses}`;
+  openAdminButton.hidden = !isAdmin;
 }
 
-function scoreGuess(guess, answer) {
-  const result = Array(game.wordLength).fill("absent");
-  const remainingLetters = answer.split("");
+async function updateAdminStatus() {
+  try {
+    const response = await getAdminStatus();
+    isAdmin = response.data.isAdmin;
+  } catch {
+    isAdmin = false;
+  }
 
-  [...guess].forEach((letter, index) => {
-    if (letter === answer[index]) {
-      result[index] = "correct";
-      remainingLetters[index] = null;
-    }
-  });
+  setSignedInView(auth.currentUser);
+}
 
-  [...guess].forEach((letter, index) => {
-    if (result[index] === "correct") return;
+async function loadGame() {
+  try {
+    const response = await startPuzzle();
+    const puzzle = response.data;
 
-    const matchingLetterIndex = remainingLetters.indexOf(letter);
-    if (matchingLetterIndex !== -1) {
-      result[index] = "present";
-      remainingLetters[matchingLetterIndex] = null;
-    }
-  });
+    game = {
+      date: puzzle.date,
+      wordLength: puzzle.wordLength,
+      maxGuesses: puzzle.maxGuesses,
+      guesses: puzzle.guesses,
+      activeGuess: "",
+      finished: puzzle.finished,
+    };
 
-  return result;
+    guessInput.maxLength = game.wordLength;
+    guessButton.disabled = game.finished;
+    guessRule.textContent = game.finished
+      ? "Puzzle complete"
+      : `Guess ${Math.min(game.guesses.length + 1, game.maxGuesses)} of ${game.maxGuesses}`;
+    setStatus(game.finished ? "You have already completed today’s puzzle." : "Type your guess.");
+    renderBoard();
+    subscribeToLeaderboard(game.date);
+  } catch (error) {
+    setStatus(error.message || "Today’s puzzle is not available yet.", true);
+  }
 }
 
 function renderBoard() {
@@ -107,18 +136,13 @@ function renderBoard() {
     row.className = "row";
     row.style.gridTemplateColumns = `repeat(${game.wordLength}, 1fr)`;
 
-    if (isActiveRow && game.shakeActive) {
-      row.classList.add("shake");
-    }
-
     for (let letterIndex = 0; letterIndex < game.wordLength; letterIndex += 1) {
       const cell = document.createElement("div");
       cell.className = "cell";
 
       if (submittedGuess) {
         cell.textContent = submittedGuess.word[letterIndex];
-        cell.classList.add(submittedGuess.result[letterIndex]);
-        cell.classList.add("revealed");
+        cell.classList.add(submittedGuess.result[letterIndex], "revealed");
         cell.style.setProperty("--tile-index", letterIndex);
       } else if (isActiveRow && game.activeGuess[letterIndex]) {
         cell.textContent = game.activeGuess[letterIndex];
@@ -130,75 +154,67 @@ function renderBoard() {
 
     board.append(row);
   }
-
-  guessInput.disabled = game.finished;
-  guessButton.disabled = game.finished;
-}
-
-function submitGuess() {
-  const guess = game.activeGuess.toLowerCase();
-  const isValidWord = /^[a-z]+$/.test(guess);
-
-  if (guess.length !== game.wordLength || !isValidWord) {
-    setStatus(`Enter exactly ${game.wordLength} letters.`, true);
-    shakeActiveRow();
-    return;
-  }
-
-  const result = scoreGuess(guess, game.answer);
-  game.guesses.push({ word: guess, result });
-  game.activeGuess = "";
-  guessInput.value = "";
-
-  if (guess === game.answer) {
-    game.finished = true;
-    const guessLabel = game.guesses.length === 1 ? "guess" : "guesses";
-    setStatus(`Excellent — you found ${game.answer.toUpperCase()} in ${game.guesses.length} ${guessLabel}!`);
-    showResult(true);
-  } else if (game.guesses.length === game.maxGuesses) {
-    game.finished = true;
-    setStatus(`The word was ${game.answer.toUpperCase()}. Come back tomorrow!`);
-    showResult(false);
-  } else {
-    setStatus(`${game.maxGuesses - game.guesses.length} guesses left.`);
-  }
-
-  renderBoard();
-  updateGuessCounter();
-}
-
-function shakeActiveRow() {
-  game.shakeActive = true;
-  renderBoard();
-
-  window.setTimeout(() => {
-    game.shakeActive = false;
-    renderBoard();
-  }, 400);
 }
 
 function addLetter(letter) {
-  if (game.finished || game.activeGuess.length >= game.wordLength) return;
+  if (!game || game.finished || game.activeGuess.length >= game.wordLength) return;
 
   game.activeGuess += letter.toUpperCase();
   renderBoard();
 }
 
 function removeLetter() {
-  if (game.finished) return;
+  if (!game || game.finished) return;
 
   game.activeGuess = game.activeGuess.slice(0, -1);
   renderBoard();
 }
 
-function showResult(isWinner) {
-  resultEyebrow.textContent = isWinner ? "PUZZLE SOLVED" : "PUZZLE COMPLETE";
-  resultTitle.textContent = isWinner ? "Well played!" : "Nice try";
-  resultCopy.textContent = isWinner
-    ? `You solved today’s word in ${game.guesses.length} guesses.`
-    : `Today’s word was ${game.answer.toUpperCase()}.`;
+async function submitGuess() {
+  if (!game || game.finished) return;
+
+  const guess = game.activeGuess.toLowerCase();
+
+  if (!/^[a-z]+$/.test(guess) || guess.length !== game.wordLength) {
+    setStatus(`Enter exactly ${game.wordLength} letters.`, true);
+    return;
+  }
+
+  guessButton.disabled = true;
+
+  try {
+    const response = await submitPuzzleGuess({ guess });
+    const result = response.data;
+
+    game.guesses = result.guesses;
+    game.finished = result.finished;
+    game.activeGuess = "";
+    guessButton.disabled = game.finished;
+    guessRule.textContent = game.finished
+      ? "Puzzle complete"
+      : `Guess ${game.guesses.length + 1} of ${game.maxGuesses}`;
+    setStatus(result.message);
+    renderBoard();
+
+    if (result.finished) showResult(result);
+  } catch (error) {
+    setStatus(error.message || "Could not submit that guess.", true);
+    guessButton.disabled = false;
+  }
+}
+
+function showResult(result) {
+  resultEyebrow.textContent = result.solved ? "PUZZLE SOLVED" : "PUZZLE COMPLETE";
+  resultTitle.textContent = result.solved ? "Well played!" : "Nice try";
+  resultCopy.textContent = result.solved
+    ? `You solved today’s word in ${result.guessesUsed} guesses.`
+    : `Today’s word was ${result.answer}.`;
+  resultStreak.textContent = result.solved
+    ? `${result.currentStreak}-day streak · Best: ${result.bestStreak}`
+    : "";
   nextPuzzle.textContent = `Next puzzle in ${getTimeUntilTomorrow()}.`;
-  window.setTimeout(() => resultDialog.showModal(), 700);
+  streakCount.textContent = result.currentStreak || 0;
+  window.setTimeout(() => resultDialog.showModal(), 650);
 }
 
 function getTimeUntilTomorrow() {
@@ -206,70 +222,71 @@ function getTimeUntilTomorrow() {
   const tomorrow = new Date(now);
 
   tomorrow.setHours(24, 0, 0, 0);
-
-  const remainingMilliseconds = tomorrow - now;
-  const hours = Math.floor(remainingMilliseconds / 3_600_000);
-  const minutes = Math.floor((remainingMilliseconds % 3_600_000) / 60_000);
+  const remaining = tomorrow - now;
+  const hours = Math.floor(remaining / 3_600_000);
+  const minutes = Math.floor((remaining % 3_600_000) / 60_000);
 
   return `${hours}h ${minutes}m`;
 }
 
-function showAdminDialog() {
-  loginMessage.textContent = "";
-  wordMessage.textContent = "";
-  loginPanel.hidden = isAdminSignedIn;
-  wordPanel.hidden = !isAdminSignedIn;
-  dailyWordInput.value = getDailyWord().toUpperCase();
-  adminDialog.showModal();
+function subscribeToLeaderboard(date) {
+  leaderboardUnsubscribe();
+
+  const scores = query(
+    collection(database, "leaderboards", date, "scores"),
+    orderBy("guessesUsed"),
+    orderBy("durationSeconds"),
+    limit(10),
+  );
+
+  leaderboardUnsubscribe = onSnapshot(scores, (snapshot) => {
+    leaderboardList.replaceChildren();
+
+    if (snapshot.empty) {
+      leaderboardList.innerHTML = "<li class=\"empty-score\">No completed games yet.</li>";
+      return;
+    }
+
+    snapshot.docs.forEach((score, index) => {
+      const item = document.createElement("li");
+      const data = score.data();
+
+      item.className = "score-row";
+      item.innerHTML = `<span>${index + 1}. ${data.displayName}</span><strong>${data.guessesUsed} guesses</strong>`;
+      leaderboardList.append(item);
+    });
+  });
 }
 
-function closeAdminDialog() {
-  adminDialog.close();
-}
-
-function handleLogin(event) {
-  event.preventDefault();
-
-  const email = document.querySelector("#admin-email").value.trim().toLowerCase();
-  const password = document.querySelector("#admin-password").value;
-
-  if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
-    loginMessage.textContent = "Incorrect email or password.";
-    loginMessage.classList.add("error");
-    return;
+async function signIn() {
+  try {
+    await signInWithPopup(auth, provider);
+    accountDialog.close();
+  } catch (error) {
+    setStatus(error.message || "Google sign-in did not complete.", true);
   }
-
-  isAdminSignedIn = true;
-  loginMessage.classList.remove("error");
-  loginPanel.hidden = true;
-  wordPanel.hidden = false;
-  dailyWordInput.focus();
 }
 
-function publishWord(event) {
+async function publishDailyWord(event) {
   event.preventDefault();
 
   const word = dailyWordInput.value.trim().toLowerCase();
-  const isValidWord = /^[a-z]{5,}$/.test(word);
 
-  if (!isValidWord) {
-    wordMessage.textContent = "Enter a word using at least 5 letters.";
-    wordMessage.classList.add("error");
+  if (!/^[a-z]{5,}$/.test(word)) {
+    adminMessage.textContent = "Enter at least 5 letters.";
+    adminMessage.classList.add("error");
     return;
   }
 
-  localStorage.setItem(STORAGE_KEY, word);
-  wordMessage.textContent = "Today's word has been published.";
-  wordMessage.classList.remove("error");
-  startGame();
-}
-
-function signOut() {
-  isAdminSignedIn = false;
-  wordPanel.hidden = true;
-  loginPanel.hidden = false;
-  loginForm.reset();
-  wordMessage.textContent = "";
+  try {
+    await setDailyPuzzle({ word });
+    adminMessage.textContent = "Today’s word is live.";
+    adminMessage.classList.remove("error");
+    await loadGame();
+  } catch (error) {
+    adminMessage.textContent = error.message || "Could not publish the word.";
+    adminMessage.classList.add("error");
+  }
 }
 
 guessForm.addEventListener("submit", (event) => {
@@ -278,38 +295,47 @@ guessForm.addEventListener("submit", (event) => {
 });
 
 guessInput.addEventListener("input", () => {
-  const typedLetters = guessInput.value.replace(/[^a-z]/gi, "");
-
-  if (typedLetters) {
-    [...typedLetters].forEach(addLetter);
-  }
-
+  const letters = guessInput.value.replace(/[^a-z]/gi, "");
+  [...letters].forEach(addLetter);
   guessInput.value = "";
 });
 
 document.addEventListener("keydown", (event) => {
-  if (adminDialog.open) return;
+  if (accountDialog.open) return;
 
   if (/^[a-zA-Z]$/.test(event.key)) {
     event.preventDefault();
     addLetter(event.key);
-  }
-
-  if (event.key === "Backspace") {
+  } else if (event.key === "Backspace") {
     event.preventDefault();
     removeLetter();
   }
 });
 
-board.addEventListener("click", () => {
-  if (!game.finished) guessInput.focus();
-});
-
-adminButton.addEventListener("click", showAdminDialog);
-closeDialogButton.addEventListener("click", closeAdminDialog);
-loginForm.addEventListener("submit", handleLogin);
-wordForm.addEventListener("submit", publishWord);
-signOutButton.addEventListener("click", signOut);
+board.addEventListener("click", () => guessInput.focus());
+accountButton.addEventListener("click", () => accountDialog.showModal());
+closeAccountButton.addEventListener("click", () => accountDialog.close());
+googleSignInButton.addEventListener("click", signIn);
+signOutButton.addEventListener("click", () => signOut(auth));
+openAdminButton.addEventListener("click", () => adminDialog.showModal());
+closeAdminButton.addEventListener("click", () => adminDialog.close());
+adminWordForm.addEventListener("submit", publishDailyWord);
 closeResultButton.addEventListener("click", () => resultDialog.close());
 
-startGame();
+onAuthStateChanged(auth, (user) => {
+  setSignedInView(user);
+  leaderboardUnsubscribe();
+
+  if (user) {
+    updateAdminStatus();
+    loadGame();
+  } else {
+    game = undefined;
+    isAdmin = false;
+    board.replaceChildren();
+    guessButton.disabled = true;
+    streakCount.textContent = "0";
+    guessRule.textContent = "Sign in to play today’s puzzle.";
+    setStatus("Sign in with Google to start.");
+  }
+});
