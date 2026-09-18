@@ -6,30 +6,11 @@ import {
   signInWithPopup,
   signOut,
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
-import {
-  collection,
-  getFirestore,
-  limit,
-  onSnapshot,
-  orderBy,
-  query,
-} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
-import {
-  getFunctions,
-  httpsCallable,
-} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
 import { firebaseConfig } from "./firebase-config.js";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const database = getFirestore(app);
-const functions = getFunctions(app, "asia-south1");
 const provider = new GoogleAuthProvider();
-
-const startPuzzle = httpsCallable(functions, "startPuzzle");
-const submitPuzzleGuess = httpsCallable(functions, "submitPuzzleGuess");
-const getAdminStatus = httpsCallable(functions, "getAdminStatus");
-const setDailyPuzzle = httpsCallable(functions, "setDailyPuzzle");
 
 const board = document.querySelector("#board");
 const statusMessage = document.querySelector("#game-status");
@@ -64,7 +45,17 @@ const closeResultButton = document.querySelector("#close-result");
 
 let game;
 let isAdmin = false;
-let leaderboardUnsubscribe = () => {};
+async function callApi(action, options = {}) {
+  const token = await auth.currentUser.getIdToken();
+  const request = await fetch(`/api/wordle?action=${action}${options.query || ""}`, {
+    method: options.method || "GET",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+  const payload = await request.json();
+  if (!request.ok) throw new Error(payload.error || "Request failed.");
+  return payload;
+}
 
 function setStatus(message, isError = false) {
   statusMessage.textContent = message;
@@ -88,8 +79,8 @@ function setSignedInView(user) {
 
 async function updateAdminStatus() {
   try {
-    const response = await getAdminStatus();
-    isAdmin = response.data.isAdmin;
+    const response = await callApi("admin-status");
+    isAdmin = response.isAdmin;
   } catch {
     isAdmin = false;
   }
@@ -99,8 +90,7 @@ async function updateAdminStatus() {
 
 async function loadGame() {
   try {
-    const response = await startPuzzle();
-    const puzzle = response.data;
+    const puzzle = await callApi("start");
 
     game = {
       date: puzzle.date,
@@ -118,7 +108,7 @@ async function loadGame() {
       : `Guess ${Math.min(game.guesses.length + 1, game.maxGuesses)} of ${game.maxGuesses}`;
     setStatus(game.finished ? "You have already completed today’s puzzle." : "Type your guess.");
     renderBoard();
-    subscribeToLeaderboard(game.date);
+    loadLeaderboard(game.date);
   } catch (error) {
     setStatus(error.message || "Today’s puzzle is not available yet.", true);
   }
@@ -183,8 +173,7 @@ async function submitGuess() {
   guessButton.disabled = true;
 
   try {
-    const response = await submitPuzzleGuess({ guess });
-    const result = response.data;
+    const result = await callApi("guess", { method: "POST", body: { guess } });
 
     game.guesses = result.guesses;
     game.finished = result.finished;
@@ -229,33 +218,23 @@ function getTimeUntilTomorrow() {
   return `${hours}h ${minutes}m`;
 }
 
-function subscribeToLeaderboard(date) {
-  leaderboardUnsubscribe();
-
-  const scores = query(
-    collection(database, "leaderboards", date, "scores"),
-    orderBy("guessesUsed"),
-    orderBy("durationSeconds"),
-    limit(10),
-  );
-
-  leaderboardUnsubscribe = onSnapshot(scores, (snapshot) => {
+async function loadLeaderboard(date) {
+  try {
+    const scores = await callApi("leaderboard", { query: `&date=${date}` });
     leaderboardList.replaceChildren();
-
-    if (snapshot.empty) {
+    if (!scores.length) {
       leaderboardList.innerHTML = "<li class=\"empty-score\">No completed games yet.</li>";
       return;
     }
-
-    snapshot.docs.forEach((score, index) => {
+    scores.forEach((data, index) => {
       const item = document.createElement("li");
-      const data = score.data();
-
       item.className = "score-row";
       item.innerHTML = `<span>${index + 1}. ${data.displayName}</span><strong>${data.guessesUsed} guesses</strong>`;
       leaderboardList.append(item);
     });
-  });
+  } catch {
+    leaderboardList.innerHTML = "<li class=\"empty-score\">Leaderboard unavailable.</li>";
+  }
 }
 
 async function signIn() {
@@ -279,7 +258,7 @@ async function publishDailyWord(event) {
   }
 
   try {
-    await setDailyPuzzle({ word });
+    await callApi("publish", { method: "POST", body: { word } });
     adminMessage.textContent = "Today’s word is live.";
     adminMessage.classList.remove("error");
     await loadGame();
@@ -324,8 +303,6 @@ closeResultButton.addEventListener("click", () => resultDialog.close());
 
 onAuthStateChanged(auth, (user) => {
   setSignedInView(user);
-  leaderboardUnsubscribe();
-
   if (user) {
     updateAdminStatus();
     loadGame();

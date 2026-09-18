@@ -1,0 +1,10 @@
+{
+  "name": "wordle-tbt",
+  "private": true,
+  "engines": {
+    "node": "20.x"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}
