@@ -19,10 +19,27 @@ async function loadHall() {
 
   scores.forEach((score, index) => {
     const item = document.createElement("li");
-    item.className = "hall-row";
-    item.innerHTML = `<span class="rank">${index + 1}</span><span>${score.displayName}</span><strong>${score.totalPoints} ✦</strong>`;
+    item.className = `hall-row rank-${index + 1}`;
+    item.style.setProperty("--entry-delay", `${index * 90}ms`);
+    item.innerHTML = `<span class="rank">${index + 1}</span><span>${score.displayName}</span><strong class="point-total">0 ✦</strong>`;
     list.append(item);
+    animatePoints(item.querySelector(".point-total"), score.totalPoints);
   });
+}
+
+function animatePoints(element, target) {
+  const startTime = performance.now();
+  const duration = 900;
+
+  function update(timestamp) {
+    const progress = Math.min((timestamp - startTime) / duration, 1);
+    const easedProgress = 1 - (1 - progress) ** 3;
+
+    element.textContent = `${Math.round(target * easedProgress)} ✦`;
+    if (progress < 1) requestAnimationFrame(update);
+  }
+
+  requestAnimationFrame(update);
 }
 
 onAuthStateChanged(auth, (user) => { if (user) loadHall(); });
