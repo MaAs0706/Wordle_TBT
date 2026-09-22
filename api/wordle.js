@@ -156,13 +156,19 @@ async function submitGuess(user, guess) {
     yesterday.setDate(yesterday.getDate() - 1);
     const currentStreak = profile.lastSolvedDate === getDateKey(yesterday) ? (profile.currentStreak || 0) + 1 : 1;
     const bestStreak = Math.max(profile.bestStreak || 0, currentStreak);
+    const maxGuesses = puzzle.wordLength + 1;
+    const solvePoints = Math.round(100 - ((guesses.length - 1) / (maxGuesses - 1)) * 60);
+    const streakBonus = Math.min(currentStreak, 10) * 2;
+    const pointsEarned = solvePoints + streakBonus;
+    const totalPoints = (profile.totalPoints || 0) + pointsEarned;
     const durationSeconds = Math.max(0, Timestamp.now().seconds - session.startedAt.seconds);
     const displayName = user.name || profile.displayName || "Player";
     const completedAt = FieldValue.serverTimestamp();
 
-    transaction.set(userReference, { displayName, currentStreak, bestStreak, lastSolvedDate: date, updatedAt: completedAt }, { merge: true });
+    transaction.set(userReference, { displayName, currentStreak, bestStreak, totalPoints, lastSolvedDate: date, updatedAt: completedAt }, { merge: true });
     transaction.set(leaderboardReference, { displayName, guessesUsed: guesses.length, durationSeconds, completedAt, currentStreak });
-    return { guesses, finished, solved, guessesUsed: guesses.length, currentStreak, bestStreak, message: `Excellent — solved in ${guesses.length} guesses!` };
+    transaction.set(database.doc(`leaderboards/all-time/scores/${user.uid}`), { displayName, totalPoints, currentStreak, bestStreak, updatedAt: completedAt });
+    return { guesses, finished, solved, guessesUsed: guesses.length, currentStreak, bestStreak, pointsEarned, totalPoints, message: `Excellent — solved in ${guesses.length} guesses!` };
   });
 }
 
@@ -193,6 +199,10 @@ module.exports = async (request, response) => {
         .slice(0, 10);
 
       return response.status(200).json(rankedScores);
+    }
+    if (action === "all-time-leaderboard") {
+      const scores = await database.collection("leaderboards/all-time/scores").get();
+      return response.status(200).json(scores.docs.map((score) => score.data()).sort((a, b) => b.totalPoints - a.totalPoints || b.bestStreak - a.bestStreak).slice(0, 50));
     }
     if (action === "admin-status") return response.status(200).json({ isAdmin: await isAdmin(database, user.uid) });
     if (action === "publish" && request.method === "POST") {

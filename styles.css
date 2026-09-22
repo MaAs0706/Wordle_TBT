@@ -90,6 +90,7 @@ button { cursor: pointer; }
   color: var(--text);
   font-size: .76rem;
 }
+.leaderboard-link,.back-link { position:absolute; right:92px; color:#f5cf72; text-decoration:none; font-size:.78rem; font-weight:bold; }.back-link { left:0; right:auto; }.hall-shell { max-width:760px; }.fantasy-board { position:relative; margin:42px auto; padding:30px 34px; border:1px solid #b99b57; border-radius:8px 18px 18px 8px; background:linear-gradient(120deg,rgb(20 65 67 / 94%),rgb(11 40 46 / 94%)); box-shadow:12px 14px 0 rgb(9 29 33 / 58%),0 0 34px rgb(241 198 89 / 20%); overflow:hidden; }.book-spine { position:absolute; left:0; top:0; bottom:0; width:16px; background:linear-gradient(90deg,#604d2c,#c5a963,#604d2c); }.hall-list { display:grid; gap:10px; margin:24px 0 0; padding:0; list-style:none; }.hall-row { display:grid; grid-template-columns:40px 1fr auto; align-items:center; gap:12px; padding:15px; border:1px solid rgb(245 207 114 / 24%); border-radius:7px; background:rgb(7 36 42 / 55%); animation:rise-in 450ms ease both; }.hall-row:nth-child(2){animation-delay:80ms}.hall-row:nth-child(3){animation-delay:160ms}.rank { color:#f5cf72; font-weight:bold; }.hall-row strong { color:#f5cf72; } @keyframes rise-in { from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)} }
 
 .streak-badge {
   position: absolute;
