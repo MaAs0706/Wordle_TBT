@@ -381,11 +381,11 @@ document.addEventListener("keydown", (event) => {
   } else if (event.key === "Backspace") {
     event.preventDefault();
     removeLetter();
-  } else if (event.key === "Enter") {
+  } else if (event.key === "Enter" || event.code === "Enter" || event.code === "NumpadEnter") {
     event.preventDefault();
     submitGuess();
   }
-});
+}, true);
 
 board.addEventListener("click", () => guessInput.focus());
 accountButton.addEventListener("click", () => accountDialog.showModal());
