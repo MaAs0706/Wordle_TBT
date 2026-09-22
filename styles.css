@@ -122,6 +122,20 @@ button { cursor: pointer; }
   text-transform: uppercase;
 }
 
+.puzzle-countdown {
+  width: fit-content;
+  margin: -5px auto 12px;
+  padding: 5px 9px;
+  border: 1px solid rgb(183 219 209 / 28%);
+  border-radius: 999px;
+  background: rgb(10 48 54 / 48%);
+  color: #c3dfd7;
+  font-size: .68rem;
+  font-weight: bold;
+  letter-spacing: .04em;
+  text-align: center;
+}
+
 .status {
   min-height: 22px;
   margin: 8px 0 15px;

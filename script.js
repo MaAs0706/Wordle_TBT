@@ -43,10 +43,13 @@ const resultCopy = document.querySelector("#result-copy");
 const resultStreak = document.querySelector("#result-streak");
 const nextPuzzle = document.querySelector("#next-puzzle");
 const closeResultButton = document.querySelector("#close-result");
+const puzzleCountdown = document.querySelector("#puzzle-countdown");
 
 let game;
 let isAdmin = false;
 let isSubmitting = false;
+let nextPuzzleTimer;
+const pagePuzzleDate = getIndiaDateKey();
 async function callApi(action, options = {}) {
   const token = await auth.currentUser.getIdToken();
   const request = await fetch(`/api/wordle?action=${action}${options.query || ""}`, {
@@ -287,21 +290,62 @@ function showResult(result) {
   resultStreak.textContent = result.solved
     ? `${result.currentStreak}-day streak · ${result.totalPoints} total points · Hall rank #${result.allTimeRank}`
     : "";
-  nextPuzzle.textContent = `Next puzzle in ${getTimeUntilTomorrow()}.`;
+  nextPuzzle.textContent = `A new word arrives in ${getTimeUntilTomorrow()}.`;
   streakCount.textContent = result.currentStreak || 0;
   window.setTimeout(() => resultDialog.showModal(), 650);
 }
 
 function getTimeUntilTomorrow() {
-  const now = new Date();
-  const tomorrow = new Date(now);
-
-  tomorrow.setHours(24, 0, 0, 0);
-  const remaining = tomorrow - now;
+  const remaining = Math.max(0, getNextIndiaMidnight() - Date.now());
   const hours = Math.floor(remaining / 3_600_000);
   const minutes = Math.floor((remaining % 3_600_000) / 60_000);
+  const seconds = Math.floor((remaining % 60_000) / 1_000);
 
-  return `${hours}h ${minutes}m`;
+  return `${hours}h ${minutes}m ${seconds}s`;
+}
+
+function getNextIndiaMidnight() {
+  const parts = getIndiaDateParts();
+
+  return Date.UTC(parts.year, parts.month - 1, parts.day + 1, 0, 0, 0) - (5.5 * 60 * 60 * 1_000);
+}
+
+function getIndiaDateParts() {
+  const dateParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts();
+  return Object.fromEntries(
+    dateParts
+      .filter(({ type }) => type !== "literal")
+      .map(({ type, value }) => [type, Number(value)]),
+  );
+}
+
+function getIndiaDateKey() {
+  const { year, month, day } = getIndiaDateParts();
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function updatePuzzleCountdown() {
+  const label = `New word in ${getTimeUntilTomorrow()} · resets at midnight IST`;
+  puzzleCountdown.textContent = label;
+
+  if (resultDialog.open) {
+    nextPuzzle.textContent = `A new word arrives in ${getTimeUntilTomorrow()}.`;
+  }
+
+  if (getIndiaDateKey() !== pagePuzzleDate) {
+    window.location.reload();
+  }
+}
+
+function beginPuzzleCountdown() {
+  window.clearInterval(nextPuzzleTimer);
+  updatePuzzleCountdown();
+  nextPuzzleTimer = window.setInterval(updatePuzzleCountdown, 1_000);
 }
 
 function formatDuration(seconds) {
@@ -412,3 +456,5 @@ onAuthStateChanged(auth, (user) => {
     setStatus("Sign in with Google to start.");
   }
 });
+
+beginPuzzleCountdown();
