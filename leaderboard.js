@@ -11,6 +11,12 @@ async function loadHall() {
   const response = await fetch("/api/wordle?action=all-time-leaderboard", { headers: { Authorization: `Bearer ${token}` } });
   const scores = await response.json();
   list.replaceChildren();
+
+  if (!scores.length) {
+    list.innerHTML = "<li class=\"empty-score\">No legends have earned points yet. Solve the next puzzle to claim the first place.</li>";
+    return;
+  }
+
   scores.forEach((score, index) => {
     const item = document.createElement("li");
     item.className = "hall-row";
