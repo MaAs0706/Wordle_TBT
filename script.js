@@ -44,17 +44,6 @@ const resultStreak = document.querySelector("#result-streak");
 const nextPuzzle = document.querySelector("#next-puzzle");
 const closeResultButton = document.querySelector("#close-result");
 const puzzleCountdown = document.querySelector("#puzzle-countdown");
-const statsStatus = document.querySelector("#stats-status");
-const playerStats = document.querySelector("#player-stats");
-const statsPlayed = document.querySelector("#stats-played");
-const statsWinRate = document.querySelector("#stats-win-rate");
-const statsAverage = document.querySelector("#stats-average");
-const statsPoints = document.querySelector("#stats-points");
-const statsCurrentStreak = document.querySelector("#stats-current-streak");
-const statsBestStreak = document.querySelector("#stats-best-streak");
-const statsRank = document.querySelector("#stats-rank");
-const statsWins = document.querySelector("#stats-wins");
-const guessDistribution = document.querySelector("#guess-distribution");
 
 let game;
 let isAdmin = false;
@@ -103,57 +92,6 @@ async function updateAdminStatus() {
   }
 
   setSignedInView(auth.currentUser);
-}
-
-async function loadPlayerStats() {
-  if (!auth.currentUser) return;
-
-  playerStats.hidden = true;
-  statsStatus.textContent = "Opening your player journal…";
-
-  try {
-    const stats = await callApi("player-stats");
-    const largestBucket = Math.max(...stats.distribution.map((bucket) => bucket.wins), 1);
-
-    statsPlayed.textContent = stats.gamesPlayed;
-    statsWinRate.textContent = `${stats.winRate}%`;
-    statsAverage.textContent = stats.averageGuesses ?? "—";
-    statsPoints.textContent = stats.totalPoints;
-    statsCurrentStreak.textContent = stats.currentStreak;
-    statsBestStreak.textContent = stats.bestStreak;
-    statsRank.textContent = stats.hallRank ? `#${stats.hallRank}` : "—";
-    statsWins.textContent = `${stats.wins} ${stats.wins === 1 ? "win" : "wins"}`;
-    guessDistribution.replaceChildren();
-
-    stats.distribution.forEach((bucket, index) => {
-      const row = document.createElement("div");
-      row.className = "distribution-row";
-      row.style.setProperty("--entry-delay", `${index * 55}ms`);
-
-      const label = document.createElement("span");
-      label.textContent = bucket.guesses;
-
-      const track = document.createElement("div");
-      track.className = "distribution-track";
-      const bar = document.createElement("span");
-      bar.className = "distribution-bar";
-      bar.style.setProperty("--bar-width", `${Math.max((bucket.wins / largestBucket) * 100, bucket.wins ? 12 : 0)}%`);
-      bar.textContent = bucket.wins;
-      track.append(bar);
-      row.append(label, track);
-      guessDistribution.append(row);
-    });
-
-    statsStatus.textContent = "";
-    playerStats.hidden = false;
-  } catch {
-    statsStatus.textContent = "Your stats are unavailable right now.";
-  }
-}
-
-function openAccount() {
-  accountDialog.showModal();
-  loadPlayerStats();
 }
 
 async function loadGame() {
@@ -494,7 +432,7 @@ document.addEventListener("keydown", (event) => {
 }, true);
 
 board.addEventListener("click", () => guessInput.focus());
-accountButton.addEventListener("click", openAccount);
+accountButton.addEventListener("click", () => accountDialog.showModal());
 closeAccountButton.addEventListener("click", () => accountDialog.close());
 googleSignInButton.addEventListener("click", signIn);
 signOutButton.addEventListener("click", () => signOut(auth));

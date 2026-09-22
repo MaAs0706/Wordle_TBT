@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Your Wordle player profile and game statistics.">
+  <title>Wordle Player Profile</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="game-shell profile-shell">
+    <header class="header">
+      <a class="back-link" href="index.html">← Game</a>
+      <div>
+        <p class="eyebrow">THE PLAYER ARCHIVE</p>
+        <h1>YOUR CARD</h1>
+        <p>Every puzzle leaves a little magic behind.</p>
+      </div>
+    </header>
+
+    <section id="profile-loading" class="profile-loading" aria-live="polite">
+      Opening your player card…
+    </section>
+
+    <section id="profile-signed-out" class="profile-signed-out" hidden>
+      <p class="eyebrow">PLAYER PROFILE</p>
+      <h2>Your story begins here.</h2>
+      <p>Sign in to see your streaks, points, rank, and guess history.</p>
+      <button id="profile-sign-in" class="google-button" type="button">Continue with Google</button>
+    </section>
+
+    <section id="player-stats" class="player-stats profile-page-card" aria-labelledby="profile-name" hidden>
+      <div class="profile-identity">
+        <span class="profile-emblem" aria-hidden="true">✦</span>
+        <div>
+          <p class="eyebrow">WORD KEEPER</p>
+          <h2 id="profile-name">Player</h2>
+          <p id="profile-email"></p>
+        </div>
+        <a class="profile-ranks-link" href="leaderboard.html">Hall ↗</a>
+      </div>
+      <div class="stats-heading">
+        <p class="eyebrow">PLAYER JOURNAL</p>
+        <h3>Your story so far</h3>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><strong id="stats-played">0</strong><span>Played</span></div>
+        <div class="stat-card"><strong id="stats-win-rate">0%</strong><span>Win rate</span></div>
+        <div class="stat-card"><strong id="stats-average">—</strong><span>Avg. guesses</span></div>
+        <div class="stat-card"><strong id="stats-points">0</strong><span>Total points</span></div>
+      </div>
+      <div class="streak-summary">
+        <span>⚡ <strong id="stats-current-streak">0</strong> current streak</span>
+        <span>✦ <strong id="stats-best-streak">0</strong> best streak</span>
+        <span>♛ <strong id="stats-rank">—</strong> Hall rank</span>
+      </div>
+      <div class="distribution-heading"><span>GUESS DISTRIBUTION</span><small id="stats-wins">0 wins</small></div>
+      <div id="guess-distribution" class="guess-distribution" aria-label="Guess distribution"></div>
+    </section>
+  </main>
+  <script type="module" src="profile.js"></script>
+</body>
+</html>
