@@ -33,26 +33,28 @@
       <div class="profile-identity">
         <span class="profile-emblem" aria-hidden="true">✦</span>
         <div>
-          <p class="eyebrow">WORD KEEPER</p>
+          <p class="eyebrow">WORD KEEPER CARD</p>
           <h2 id="profile-name">Player</h2>
-          <p id="profile-email"></p>
         </div>
-        <a class="profile-ranks-link" href="leaderboard.html">Hall ↗</a>
+        <span class="profile-level">LV. <strong id="profile-level">1</strong></span>
       </div>
-      <div class="stats-heading">
-        <p class="eyebrow">PLAYER JOURNAL</p>
-        <h3>Your story so far</h3>
+      <p id="profile-email" class="profile-email"></p>
+      <figure class="card-art">
+        <img src="assets/word-keeper-card-art.png" alt="A magical library tower beside a moonlit teal lake with golden letter tiles floating in the air.">
+      </figure>
+      <p class="card-motto">ONE WORD. ONE CHALLENGE. KEEP GOING.</p>
+      <div class="card-stat-list">
+        <div class="card-stat-row"><span class="stat-icon">▣</span><span>Games played</span><strong id="stats-played">0</strong></div>
+        <div class="card-stat-row"><span class="stat-icon">✦</span><span>Wins</span><strong id="stats-wins-value">0</strong></div>
+        <div class="card-stat-row"><span class="stat-icon">↗</span><span>Win rate</span><strong id="stats-win-rate">0%</strong></div>
+        <div class="card-stat-row"><span class="stat-icon">◈</span><span>Average guesses</span><strong id="stats-average">—</strong></div>
+        <div class="card-stat-row"><span class="stat-icon">⚡</span><span>Highest streak</span><strong id="stats-best-streak">0</strong></div>
+        <div class="card-stat-row"><span class="stat-icon">♛</span><span>Hall rank</span><strong id="stats-rank">—</strong></div>
       </div>
-      <div class="stats-grid">
-        <div class="stat-card"><strong id="stats-played">0</strong><span>Played</span></div>
-        <div class="stat-card"><strong id="stats-win-rate">0%</strong><span>Win rate</span></div>
-        <div class="stat-card"><strong id="stats-average">—</strong><span>Avg. guesses</span></div>
-        <div class="stat-card"><strong id="stats-points">0</strong><span>Total points</span></div>
-      </div>
-      <div class="streak-summary">
-        <span>⚡ <strong id="stats-current-streak">0</strong> current streak</span>
-        <span>✦ <strong id="stats-best-streak">0</strong> best streak</span>
-        <span>♛ <strong id="stats-rank">—</strong> Hall rank</span>
+      <div class="profile-card-footer">
+        <span><strong id="stats-points">0</strong> star points</span>
+        <span><strong id="stats-current-streak">0</strong> day streak</span>
+        <a class="profile-ranks-link" href="leaderboard.html">Hall of Fame ↗</a>
       </div>
       <div class="distribution-heading"><span>GUESS DISTRIBUTION</span><small id="stats-wins">0 wins</small></div>
       <div id="guess-distribution" class="guess-distribution" aria-label="Guess distribution"></div>

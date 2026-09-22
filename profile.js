@@ -24,6 +24,8 @@ const statsCurrentStreak = document.querySelector("#stats-current-streak");
 const statsBestStreak = document.querySelector("#stats-best-streak");
 const statsRank = document.querySelector("#stats-rank");
 const statsWins = document.querySelector("#stats-wins");
+const statsWinsValue = document.querySelector("#stats-wins-value");
+const profileLevel = document.querySelector("#profile-level");
 const guessDistribution = document.querySelector("#guess-distribution");
 
 async function callApi(action) {
@@ -71,6 +73,7 @@ async function loadProfile(user) {
     profileName.textContent = user.displayName || "Player";
     profileEmail.textContent = user.email || "Signed in with Google";
     statsPlayed.textContent = stats.gamesPlayed;
+    statsWinsValue.textContent = stats.wins;
     statsWinRate.textContent = `${stats.winRate}%`;
     statsAverage.textContent = stats.averageGuesses ?? "—";
     statsPoints.textContent = stats.totalPoints;
@@ -78,6 +81,7 @@ async function loadProfile(user) {
     statsBestStreak.textContent = stats.bestStreak;
     statsRank.textContent = stats.hallRank ? `#${stats.hallRank}` : "—";
     statsWins.textContent = `${stats.wins} ${stats.wins === 1 ? "win" : "wins"}`;
+    profileLevel.textContent = Math.max(1, Math.floor(stats.totalPoints / 100) + 1);
     renderDistribution(stats.distribution);
     profileLoading.hidden = true;
     playerStats.hidden = false;
