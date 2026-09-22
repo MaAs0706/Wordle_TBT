@@ -282,10 +282,10 @@ function showResult(result) {
   resultEyebrow.textContent = result.solved ? "PUZZLE SOLVED" : "PUZZLE COMPLETE";
   resultTitle.textContent = result.solved ? "Well played!" : "Nice try";
   resultCopy.textContent = result.solved
-    ? `You solved today’s word in ${result.guessesUsed} guesses.`
+    ? `You solved today’s word in ${result.guessesUsed} guesses and earned ${result.pointsEarned} points.`
     : `Today’s word was ${result.answer}.`;
   resultStreak.textContent = result.solved
-    ? `${result.currentStreak}-day streak · Best: ${result.bestStreak}`
+    ? `${result.currentStreak}-day streak · ${result.totalPoints} total points · Hall rank #${result.allTimeRank}`
     : "";
   nextPuzzle.textContent = `Next puzzle in ${getTimeUntilTomorrow()}.`;
   streakCount.textContent = result.currentStreak || 0;

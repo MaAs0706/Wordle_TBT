@@ -167,7 +167,7 @@ async function submitGuess(user, guess) {
   const userReference = database.doc(`users/${user.uid}`);
   const leaderboardReference = database.doc(`leaderboards/${date}/scores/${user.uid}`);
 
-  return database.runTransaction(async (transaction) => {
+  const outcome = await database.runTransaction(async (transaction) => {
     const [puzzle, sessionSnapshot, userSnapshot] = await Promise.all([
       puzzlePromise,
       transaction.get(sessionReference),
@@ -208,6 +208,16 @@ async function submitGuess(user, guess) {
     transaction.set(database.doc(`leaderboards/all-time/scores/${user.uid}`), { displayName, totalPoints, currentStreak, bestStreak, updatedAt: completedAt });
     return { guesses, finished, solved, guessesUsed: guesses.length, currentStreak, bestStreak, pointsEarned, totalPoints, message: `Excellent — solved in ${guesses.length} guesses!` };
   });
+
+  if (!outcome.solved) return outcome;
+
+  const allTimeScores = await database.collection("leaderboards/all-time/scores").get();
+  const rankedScores = allTimeScores.docs
+    .map((score) => ({ userId: score.id, ...score.data() }))
+    .sort((first, second) => second.totalPoints - first.totalPoints || second.bestStreak - first.bestStreak);
+
+  outcome.allTimeRank = rankedScores.findIndex((score) => score.userId === user.uid) + 1;
+  return outcome;
 }
 
 module.exports = async (request, response) => {
