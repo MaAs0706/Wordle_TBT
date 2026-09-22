@@ -103,6 +103,7 @@ async function loadGame() {
 
     guessInput.maxLength = game.wordLength;
     guessButton.disabled = game.finished;
+    streakCount.textContent = puzzle.currentStreak;
     guessRule.textContent = game.finished
       ? "Puzzle complete"
       : `Guess ${Math.min(game.guesses.length + 1, game.maxGuesses)} of ${game.maxGuesses}`;

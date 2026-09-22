@@ -85,6 +85,7 @@ async function startPuzzle(user) {
   const { database } = getFirebaseAdmin();
   const date = getDateKey();
   const puzzle = await getDailyPuzzle(database, date);
+  const userProfile = await database.doc(`users/${user.uid}`).get();
 
   const sessionReference = database.doc(`gameSessions/${date}_${user.uid}`);
   let session = await sessionReference.get();
@@ -96,7 +97,14 @@ async function startPuzzle(user) {
   }
 
   const sessionData = session.data();
-  return { date, wordLength: puzzle.wordLength, maxGuesses: puzzle.wordLength + 1, guesses: sessionData.guesses, finished: sessionData.finished };
+  return {
+    date,
+    wordLength: puzzle.wordLength,
+    maxGuesses: puzzle.wordLength + 1,
+    guesses: sessionData.guesses,
+    finished: sessionData.finished,
+    currentStreak: userProfile.data()?.currentStreak || 0,
+  };
 }
 
 async function submitGuess(user, guess) {
