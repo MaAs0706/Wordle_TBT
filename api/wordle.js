@@ -92,8 +92,15 @@ async function startPuzzle(user) {
   ]);
   let session = sessionSnapshot;
 
-  if (!session.exists) {
-    const data = { date, userId: user.uid, guesses: [], finished: false, startedAt: Timestamp.now() };
+  if (!session.exists || session.data().puzzleVersion !== puzzle.version) {
+    const data = {
+      date,
+      userId: user.uid,
+      puzzleVersion: puzzle.version,
+      guesses: [],
+      finished: false,
+      startedAt: Timestamp.now(),
+    };
     await sessionReference.set(data);
     session = { data: () => data };
   }
@@ -126,6 +133,9 @@ async function submitGuess(user, guess) {
     if (!sessionSnapshot.exists) throw new Error("Start today’s puzzle first.");
 
     const session = sessionSnapshot.data();
+    if (session.puzzleVersion !== puzzle.version) {
+      throw new Error("A newer puzzle is available. Reload the page to play it.");
+    }
     if (!/^[a-z]+$/.test(guess) || guess.length !== puzzle.wordLength) throw new Error(`Enter exactly ${puzzle.wordLength} letters.`);
     if (session.finished) throw new Error("Today’s puzzle is already complete.");
 
@@ -185,9 +195,10 @@ module.exports = async (request, response) => {
       const word = String(request.body.word || "").trim().toLowerCase();
       if (!/^[a-z]{5,}$/.test(word)) return response.status(400).json({ error: "Use a word with at least 5 letters." });
       const date = getDateKey();
+      const version = Date.now();
       await Promise.all([
-        database.doc(`privatePuzzles/${date}`).set({ answer: word, wordLength: word.length, publishedBy: user.uid, publishedAt: FieldValue.serverTimestamp() }),
-        database.doc(`publicPuzzles/${date}`).set({ wordLength: word.length, status: "active", publishedAt: FieldValue.serverTimestamp() }),
+        database.doc(`privatePuzzles/${date}`).set({ answer: word, wordLength: word.length, version, publishedBy: user.uid, publishedAt: FieldValue.serverTimestamp() }),
+        database.doc(`publicPuzzles/${date}`).set({ wordLength: word.length, version, status: "active", publishedAt: FieldValue.serverTimestamp() }),
       ]);
       cachedPuzzle = undefined;
       return response.status(200).json({ wordLength: word.length });

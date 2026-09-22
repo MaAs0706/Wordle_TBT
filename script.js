@@ -46,6 +46,7 @@ const closeResultButton = document.querySelector("#close-result");
 
 let game;
 let isAdmin = false;
+let isSubmitting = false;
 async function callApi(action, options = {}) {
   const token = await auth.currentUser.getIdToken();
   const request = await fetch(`/api/wordle?action=${action}${options.query || ""}`, {
@@ -242,7 +243,7 @@ function removeLetter() {
 }
 
 async function submitGuess() {
-  if (!game || game.finished) return;
+  if (!game || game.finished || isSubmitting) return;
 
   const guess = game.activeGuess.toLowerCase();
 
@@ -251,6 +252,7 @@ async function submitGuess() {
     return;
   }
 
+  isSubmitting = true;
   guessButton.disabled = true;
   setStatus("Checking your guess…", false, true);
 
@@ -271,6 +273,8 @@ async function submitGuess() {
   } catch (error) {
     setStatus(error.message || "Could not submit that guess.", true);
     guessButton.disabled = false;
+  } finally {
+    isSubmitting = false;
   }
 }
 
