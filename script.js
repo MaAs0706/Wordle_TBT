@@ -58,9 +58,10 @@ async function callApi(action, options = {}) {
   return payload;
 }
 
-function setStatus(message, isError = false) {
+function setStatus(message, isError = false, isLoading = false) {
   statusMessage.textContent = message;
   statusMessage.classList.toggle("error", isError);
+  statusMessage.classList.toggle("loading", isLoading);
 }
 
 function setSignedInView(user) {
@@ -90,6 +91,11 @@ async function updateAdminStatus() {
 }
 
 async function loadGame() {
+  guessButton.disabled = true;
+  guessRule.textContent = "Loading today’s puzzle";
+  setStatus("Preparing your puzzle…", false, true);
+  renderLoadingBoard();
+
   try {
     const puzzle = await callApi("start");
 
@@ -114,6 +120,26 @@ async function loadGame() {
   } catch (error) {
     guessRule.textContent = "Today’s puzzle is not available";
     setStatus(error.message || "Today’s puzzle is not available yet.", true);
+  }
+}
+
+function renderLoadingBoard() {
+  board.style.setProperty("--word-length", 5);
+  board.replaceChildren();
+
+  for (let rowIndex = 0; rowIndex < 6; rowIndex += 1) {
+    const row = document.createElement("div");
+    row.className = "row loading-row";
+    row.style.gridTemplateColumns = "repeat(5, 1fr)";
+
+    for (let letterIndex = 0; letterIndex < 5; letterIndex += 1) {
+      const cell = document.createElement("div");
+      cell.className = "cell loading-cell";
+      cell.style.setProperty("--tile-index", letterIndex + rowIndex);
+      row.append(cell);
+    }
+
+    board.append(row);
   }
 }
 
@@ -226,7 +252,7 @@ async function submitGuess() {
   }
 
   guessButton.disabled = true;
-  setStatus("Checking your guess…");
+  setStatus("Checking your guess…", false, true);
 
   try {
     const result = await callApi("guess", { method: "POST", body: { guess } });
