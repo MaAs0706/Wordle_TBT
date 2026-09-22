@@ -220,6 +220,45 @@ async function submitGuess(user, guess) {
   return outcome;
 }
 
+async function getPlayerStats(user) {
+  const { database } = getFirebaseAdmin();
+  await backfillAllTimeLeaderboard(database);
+
+  const [profileSnapshot, sessionsSnapshot, scoresSnapshot] = await Promise.all([
+    database.doc(`users/${user.uid}`).get(),
+    database.collection("gameSessions").where("userId", "==", user.uid).get(),
+    database.collection("leaderboards/all-time/scores").get(),
+  ]);
+  const completedGames = sessionsSnapshot.docs
+    .map((session) => session.data())
+    .filter((session) => session.finished);
+  const winningGames = completedGames.filter((session) => session.solved);
+  const guessesUsed = winningGames.map((session) => session.guesses.length);
+  const totalGuesses = guessesUsed.reduce((total, guesses) => total + guesses, 0);
+  const largestGuessCount = Math.max(6, ...guessesUsed);
+  const distribution = Array.from({ length: largestGuessCount }, (_, index) => ({
+    guesses: index + 1,
+    wins: guessesUsed.filter((guesses) => guesses === index + 1).length,
+  }));
+  const profile = profileSnapshot.data() || {};
+  const rankedScores = scoresSnapshot.docs
+    .map((score) => ({ userId: score.id, ...score.data() }))
+    .sort((first, second) => second.totalPoints - first.totalPoints || second.bestStreak - first.bestStreak);
+  const position = rankedScores.findIndex((score) => score.userId === user.uid);
+
+  return {
+    gamesPlayed: completedGames.length,
+    wins: winningGames.length,
+    winRate: completedGames.length ? Math.round((winningGames.length / completedGames.length) * 100) : 0,
+    averageGuesses: winningGames.length ? Number((totalGuesses / winningGames.length).toFixed(1)) : null,
+    currentStreak: profile.currentStreak || 0,
+    bestStreak: profile.bestStreak || 0,
+    totalPoints: profile.totalPoints || 0,
+    hallRank: position === -1 ? null : position + 1,
+    distribution,
+  };
+}
+
 module.exports = async (request, response) => {
   try {
     const action = request.query.action;
@@ -253,6 +292,7 @@ module.exports = async (request, response) => {
       const scores = await database.collection("leaderboards/all-time/scores").get();
       return response.status(200).json(scores.docs.map((score) => score.data()).sort((a, b) => b.totalPoints - a.totalPoints || b.bestStreak - a.bestStreak).slice(0, 50));
     }
+    if (action === "player-stats") return response.status(200).json(await getPlayerStats(user));
     if (action === "admin-status") return response.status(200).json({ isAdmin: await isAdmin(database, user.uid) });
     if (action === "publish" && request.method === "POST") {
       if (!await isAdmin(database, user.uid)) return response.status(403).json({ error: "Admin access is required." });

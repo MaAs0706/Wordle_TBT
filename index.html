@@ -59,6 +59,26 @@
       <p class="eyebrow">WORDLE ACCOUNT</p>
       <h2 id="account-name"></h2>
       <p id="account-copy" class="dialog-copy"></p>
+      <p id="stats-status" class="stats-status" aria-live="polite"></p>
+      <section id="player-stats" class="player-stats" aria-labelledby="stats-title" hidden>
+        <div class="stats-heading">
+          <p class="eyebrow">PLAYER JOURNAL</p>
+          <h3 id="stats-title">Your story so far</h3>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card"><strong id="stats-played">0</strong><span>Played</span></div>
+          <div class="stat-card"><strong id="stats-win-rate">0%</strong><span>Win rate</span></div>
+          <div class="stat-card"><strong id="stats-average">—</strong><span>Avg. guesses</span></div>
+          <div class="stat-card"><strong id="stats-points">0</strong><span>Total points</span></div>
+        </div>
+        <div class="streak-summary">
+          <span>⚡ <strong id="stats-current-streak">0</strong> current streak</span>
+          <span>✦ <strong id="stats-best-streak">0</strong> best streak</span>
+          <span>♛ <strong id="stats-rank">—</strong> Hall rank</span>
+        </div>
+        <div class="distribution-heading"><span>GUESS DISTRIBUTION</span><small id="stats-wins">0 wins</small></div>
+        <div id="guess-distribution" class="guess-distribution" aria-label="Guess distribution"></div>
+      </section>
       <button id="open-admin" class="text-button" type="button" hidden>Set today’s word</button>
       <button id="sign-out-button" class="text-button" type="button">Sign out</button>
     </section>
