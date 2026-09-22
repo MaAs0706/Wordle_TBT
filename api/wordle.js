@@ -85,6 +85,44 @@ async function getDailyPuzzle(database, date) {
   return cachedPuzzle.data;
 }
 
+async function backfillAllTimeLeaderboard(database) {
+  const currentScores = await database.collection("leaderboards/all-time/scores").limit(1).get();
+  if (!currentScores.empty) return;
+
+  const historicScores = await database.collectionGroup("scores").get();
+  const players = new Map();
+
+  historicScores.docs.forEach((score) => {
+    const leaderboardDate = score.ref.parent.parent.id;
+    if (leaderboardDate === "all-time") return;
+
+    const data = score.data();
+    const userId = score.id;
+    const existing = players.get(userId) || {
+      displayName: data.displayName || "Player",
+      totalPoints: 0,
+      currentStreak: 0,
+      bestStreak: 0,
+    };
+    const legacyPoints = Math.max(40, 110 - (data.guessesUsed || 6) * 10);
+
+    existing.totalPoints += legacyPoints;
+    existing.currentStreak = Math.max(existing.currentStreak, data.currentStreak || 0);
+    existing.bestStreak = Math.max(existing.bestStreak, data.currentStreak || 0);
+    players.set(userId, existing);
+  });
+
+  const batch = database.batch();
+  players.forEach((player, userId) => {
+    batch.set(database.doc(`leaderboards/all-time/scores/${userId}`), {
+      ...player,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+
+  if (players.size) await batch.commit();
+}
+
 async function startPuzzle(user) {
   const { database } = getFirebaseAdmin();
   const date = getDateKey();
@@ -201,6 +239,7 @@ module.exports = async (request, response) => {
       return response.status(200).json(rankedScores);
     }
     if (action === "all-time-leaderboard") {
+      await backfillAllTimeLeaderboard(database);
       const scores = await database.collection("leaderboards/all-time/scores").get();
       return response.status(200).json(scores.docs.map((score) => score.data()).sort((a, b) => b.totalPoints - a.totalPoints || b.bestStreak - a.bestStreak).slice(0, 50));
     }
