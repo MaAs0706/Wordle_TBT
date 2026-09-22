@@ -13,6 +13,7 @@ const provider = new GoogleAuthProvider();
 const profileLoading = document.querySelector("#profile-loading");
 const signedOutPanel = document.querySelector("#profile-signed-out");
 const playerStats = document.querySelector("#player-stats");
+const cardPedestal = document.querySelector("#card-pedestal");
 const profileName = document.querySelector("#profile-name");
 const profileEmail = document.querySelector("#profile-email");
 const signInButton = document.querySelector("#profile-sign-in");
@@ -85,6 +86,7 @@ async function loadProfile(user) {
     renderDistribution(stats.distribution);
     profileLoading.hidden = true;
     playerStats.hidden = false;
+    cardPedestal.hidden = false;
   } catch {
     profileLoading.textContent = "Your player card is unavailable right now. Please try again shortly.";
   }
@@ -102,5 +104,6 @@ onAuthStateChanged(auth, (user) => {
   } else {
     profileLoading.hidden = true;
     playerStats.hidden = true;
+    cardPedestal.hidden = true;
   }
 });

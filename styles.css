@@ -437,6 +437,71 @@ button:disabled { cursor: not-allowed; opacity: .55; }
     0 0 32px rgb(255 203 71 / 42%),
     inset 0 0 0 3px rgb(255 241 172 / 25%);
   transform: perspective(1000px) rotateX(1deg) rotateY(-1.5deg);
+  animation: journal-open 480ms ease both, card-hover 4.8s ease-in-out 550ms infinite;
+}
+
+.card-pedestal {
+  position: relative;
+  width: min(100%, 500px);
+  height: 118px;
+  margin: -41px auto 24px;
+  perspective: 700px;
+}
+
+.pedestal-ring {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  left: 50%;
+  width: 76%;
+  height: 52px;
+  border: 4px solid #ffe281;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #fff1ae, 0 0 26px rgb(255 194 50 / 85%), inset 0 0 16px rgb(255 231 128 / 82%);
+  transform: translateX(-50%) rotateX(67deg);
+  animation: pedestal-pulse 2.8s ease-in-out infinite;
+}
+
+.pedestal-ring::after {
+  position: absolute;
+  inset: 9px;
+  border: 2px solid rgb(255 240 175 / 72%);
+  border-radius: inherit;
+  content: "";
+}
+
+.pedestal-base {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  display: grid;
+  width: 88%;
+  height: 70px;
+  place-items: end center;
+  padding: 0 0 13px;
+  border: 1px solid #9e7833;
+  border-radius: 12px 12px 26px 26px;
+  background:
+    linear-gradient(180deg, rgb(6 13 23 / 26%) 0 14%, transparent 15%),
+    linear-gradient(110deg, #151a26, #050914 48%, #1d2632);
+  box-shadow: 0 15px 25px rgb(0 0 0 / 58%), inset 0 1px 0 rgb(255 224 133 / 32%), 0 0 20px rgb(255 188 53 / 30%);
+  color: #f2cb6f;
+  font-size: .65rem;
+  font-weight: bold;
+  letter-spacing: .12em;
+  transform: translateX(-50%);
+}
+
+.pedestal-base::before {
+  position: absolute;
+  top: 11px;
+  left: 9%;
+  width: 82%;
+  height: 18px;
+  border: 1px solid rgb(250 206 107 / 54%);
+  border-radius: 50%;
+  box-shadow: 0 0 11px rgb(255 217 115 / 38%);
+  content: "";
 }
 
 .profile-identity {
@@ -691,6 +756,16 @@ button:disabled { cursor: not-allowed; opacity: .55; }
   50% { transform: translateY(-5px) rotateX(1.2deg); }
 }
 
+@keyframes card-hover {
+  0%, 100% { transform: perspective(1000px) rotateX(1deg) rotateY(-1.5deg) translateY(0); }
+  50% { transform: perspective(1000px) rotateX(1.6deg) rotateY(1deg) translateY(-12px); }
+}
+
+@keyframes pedestal-pulse {
+  0%, 100% { opacity: .76; filter: brightness(.9); }
+  50% { opacity: 1; filter: brightness(1.22); }
+}
+
 @keyframes card-glow {
   from { opacity: .5; transform: scale(.9); }
   to { opacity: 1; transform: scale(1.1); }
@@ -727,6 +802,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
   }
 
   .profile-page-card { margin: 24px auto; padding: 18px; }
+  .card-pedestal { margin-top: -32px; transform: scale(.88); transform-origin: top center; }
   .profile-identity { gap: 9px; }
   .profile-ranks-link { padding: 6px; }
 }
