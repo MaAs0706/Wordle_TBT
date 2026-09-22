@@ -373,7 +373,7 @@ guessInput.addEventListener("input", () => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (accountDialog.open) return;
+  if (accountDialog.open || adminDialog.open || resultDialog.open) return;
 
   if (/^[a-zA-Z]$/.test(event.key)) {
     event.preventDefault();
@@ -381,6 +381,9 @@ document.addEventListener("keydown", (event) => {
   } else if (event.key === "Backspace") {
     event.preventDefault();
     removeLetter();
+  } else if (event.key === "Enter") {
+    event.preventDefault();
+    submitGuess();
   }
 });
 
