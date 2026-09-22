@@ -172,6 +172,7 @@ async function submitGuess() {
   }
 
   guessButton.disabled = true;
+  setStatus("Checking your guess…");
 
   try {
     const result = await callApi("guess", { method: "POST", body: { guess } });

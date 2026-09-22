@@ -2,6 +2,8 @@ const { cert, getApps, initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
 const { FieldValue, getFirestore, Timestamp } = require("firebase-admin/firestore");
 
+let cachedPuzzle;
+
 function getFirebaseAdmin() {
   if (!getApps().length) {
     const encodedCredentials = process.env.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64;
@@ -67,12 +69,22 @@ async function isAdmin(database, userId) {
   return admin.exists;
 }
 
+async function getDailyPuzzle(database, date) {
+  if (cachedPuzzle?.date === date) {
+    return cachedPuzzle.data;
+  }
+
+  const puzzle = await database.doc(`privatePuzzles/${date}`).get();
+  if (!puzzle.exists) throw new Error("Today’s puzzle has not been published yet.");
+
+  cachedPuzzle = { date, data: puzzle.data() };
+  return cachedPuzzle.data;
+}
+
 async function startPuzzle(user) {
   const { database } = getFirebaseAdmin();
   const date = getDateKey();
-  const puzzle = await database.doc(`privatePuzzles/${date}`).get();
-
-  if (!puzzle.exists) throw new Error("Today’s puzzle has not been published yet.");
+  const puzzle = await getDailyPuzzle(database, date);
 
   const sessionReference = database.doc(`gameSessions/${date}_${user.uid}`);
   let session = await sessionReference.get();
@@ -83,26 +95,24 @@ async function startPuzzle(user) {
     session = { data: () => data };
   }
 
-  const puzzleData = puzzle.data();
   const sessionData = session.data();
-  return { date, wordLength: puzzleData.wordLength, maxGuesses: puzzleData.wordLength + 1, guesses: sessionData.guesses, finished: sessionData.finished };
+  return { date, wordLength: puzzle.wordLength, maxGuesses: puzzle.wordLength + 1, guesses: sessionData.guesses, finished: sessionData.finished };
 }
 
 async function submitGuess(user, guess) {
   const { database } = getFirebaseAdmin();
   const date = getDateKey();
-  const puzzleReference = database.doc(`privatePuzzles/${date}`);
   const sessionReference = database.doc(`gameSessions/${date}_${user.uid}`);
   const userReference = database.doc(`users/${user.uid}`);
   const leaderboardReference = database.doc(`leaderboards/${date}/scores/${user.uid}`);
 
   return database.runTransaction(async (transaction) => {
-    const [puzzleSnapshot, sessionSnapshot, userSnapshot] = await Promise.all([
-      transaction.get(puzzleReference), transaction.get(sessionReference), transaction.get(userReference),
+    const [sessionSnapshot, userSnapshot] = await Promise.all([
+      transaction.get(sessionReference), transaction.get(userReference),
     ]);
-    if (!puzzleSnapshot.exists || !sessionSnapshot.exists) throw new Error("Start today’s puzzle first.");
+    if (!sessionSnapshot.exists) throw new Error("Start today’s puzzle first.");
 
-    const puzzle = puzzleSnapshot.data();
+    const puzzle = await getDailyPuzzle(database, date);
     const session = sessionSnapshot.data();
     if (!/^[a-z]+$/.test(guess) || guess.length !== puzzle.wordLength) throw new Error(`Enter exactly ${puzzle.wordLength} letters.`);
     if (session.finished) throw new Error("Today’s puzzle is already complete.");
@@ -152,6 +162,7 @@ module.exports = async (request, response) => {
         database.doc(`privatePuzzles/${date}`).set({ answer: word, wordLength: word.length, publishedBy: user.uid, publishedAt: FieldValue.serverTimestamp() }),
         database.doc(`publicPuzzles/${date}`).set({ wordLength: word.length, status: "active", publishedAt: FieldValue.serverTimestamp() }),
       ]);
+      cachedPuzzle = undefined;
       return response.status(200).json({ wordLength: word.length });
     }
     return response.status(404).json({ error: "Unknown action." });
