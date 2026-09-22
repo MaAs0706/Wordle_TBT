@@ -110,6 +110,7 @@ async function loadGame() {
     renderBoard();
     loadLeaderboard(game.date);
   } catch (error) {
+    guessRule.textContent = "Today’s puzzle is not available";
     setStatus(error.message || "Today’s puzzle is not available yet.", true);
   }
 }
