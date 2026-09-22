@@ -4,7 +4,7 @@
   --line: #70999a;
   --text: #f8f8f8;
   --muted: #a1a1a5;
-  --correct: #1e817c;
+  --correct: #1b6668;
   --present: #b59f3b;
   --absent: #3a3a3c;
   --accent: #77b255;
@@ -218,7 +218,7 @@ button { cursor: pointer; }
 }
 
 .key:hover:not(:disabled) { background: #23373b; }
-.key.correct { border-color: #7ed2c9; background: #1e817c; }
+.key.correct { border-color: #75b5b2; background: #1b6668; }
 .key.present { border-color: #f0cf68; background: #b89636; }
 .key.absent { border-color: #7d8c91; background: #657278; color: #e8eeee; }
 .key.absent:disabled { cursor: not-allowed; opacity: 1; }
