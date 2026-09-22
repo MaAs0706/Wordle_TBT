@@ -84,11 +84,13 @@ async function getDailyPuzzle(database, date) {
 async function startPuzzle(user) {
   const { database } = getFirebaseAdmin();
   const date = getDateKey();
-  const puzzle = await getDailyPuzzle(database, date);
-  const userProfile = await database.doc(`users/${user.uid}`).get();
-
   const sessionReference = database.doc(`gameSessions/${date}_${user.uid}`);
-  let session = await sessionReference.get();
+  const [puzzle, userProfile, sessionSnapshot] = await Promise.all([
+    getDailyPuzzle(database, date),
+    database.doc(`users/${user.uid}`).get(),
+    sessionReference.get(),
+  ]);
+  let session = sessionSnapshot;
 
   if (!session.exists) {
     const data = { date, userId: user.uid, guesses: [], finished: false, startedAt: Timestamp.now() };
@@ -110,17 +112,19 @@ async function startPuzzle(user) {
 async function submitGuess(user, guess) {
   const { database } = getFirebaseAdmin();
   const date = getDateKey();
+  const puzzlePromise = getDailyPuzzle(database, date);
   const sessionReference = database.doc(`gameSessions/${date}_${user.uid}`);
   const userReference = database.doc(`users/${user.uid}`);
   const leaderboardReference = database.doc(`leaderboards/${date}/scores/${user.uid}`);
 
   return database.runTransaction(async (transaction) => {
-    const [sessionSnapshot, userSnapshot] = await Promise.all([
-      transaction.get(sessionReference), transaction.get(userReference),
+    const [puzzle, sessionSnapshot, userSnapshot] = await Promise.all([
+      puzzlePromise,
+      transaction.get(sessionReference),
+      transaction.get(userReference),
     ]);
     if (!sessionSnapshot.exists) throw new Error("Start today’s puzzle first.");
 
-    const puzzle = await getDailyPuzzle(database, date);
     const session = sessionSnapshot.data();
     if (!/^[a-z]+$/.test(guess) || guess.length !== puzzle.wordLength) throw new Error(`Enter exactly ${puzzle.wordLength} letters.`);
     if (session.finished) throw new Error("Today’s puzzle is already complete.");
