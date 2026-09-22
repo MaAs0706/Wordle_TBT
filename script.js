@@ -18,6 +18,7 @@ const guessRule = document.querySelector("#guess-rule");
 const guessForm = document.querySelector("#guess-form");
 const guessInput = document.querySelector("#guess-input");
 const guessButton = document.querySelector("#guess-button");
+const keyboard = document.querySelector("#keyboard");
 const streakCount = document.querySelector("#streak-count");
 const leaderboardList = document.querySelector("#leaderboard-list");
 const accountButton = document.querySelector("#account-button");
@@ -146,10 +147,62 @@ function renderBoard() {
 
     board.append(row);
   }
+
+  renderKeyboard();
+}
+
+function renderKeyboard() {
+  const keyStates = getKeyStates();
+
+  keyboard.replaceChildren();
+
+  ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"].forEach((letters, rowIndex) => {
+    const row = document.createElement("div");
+    row.className = "key-row";
+
+    if (rowIndex === 2) row.append(createKey("ENTER", "wide"));
+    [...letters].forEach((letter) => row.append(createKey(letter, "", keyStates[letter.toLowerCase()])));
+    if (rowIndex === 2) row.append(createKey("⌫", "wide"));
+
+    keyboard.append(row);
+  });
+}
+
+function getKeyStates() {
+  const keyStates = {};
+  const priority = { absent: 1, present: 2, correct: 3 };
+
+  game.guesses.forEach((guess) => {
+    [...guess.word].forEach((letter, index) => {
+      const state = guess.result[index];
+      if (!keyStates[letter] || priority[state] > priority[keyStates[letter]]) {
+        keyStates[letter] = state;
+      }
+    });
+  });
+
+  return keyStates;
+}
+
+function createKey(label, extraClass = "", state = "") {
+  const key = document.createElement("button");
+
+  key.type = "button";
+  key.className = `key ${extraClass} ${state}`;
+  key.textContent = label;
+  key.disabled = state === "absent";
+  key.addEventListener("click", () => {
+    if (label === "ENTER") submitGuess();
+    else if (label === "⌫") removeLetter();
+    else addLetter(label);
+  });
+
+  return key;
 }
 
 function addLetter(letter) {
   if (!game || game.finished || game.activeGuess.length >= game.wordLength) return;
+  if (getKeyStates()[letter.toLowerCase()] === "absent") return;
 
   game.activeGuess += letter.toUpperCase();
   renderBoard();
