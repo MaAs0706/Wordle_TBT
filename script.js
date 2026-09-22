@@ -220,6 +220,13 @@ function getTimeUntilTomorrow() {
   return `${hours}h ${minutes}m`;
 }
 
+function formatDuration(seconds) {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+
+  return minutes ? `${minutes}m ${remainingSeconds}s` : `${remainingSeconds}s`;
+}
+
 async function loadLeaderboard(date) {
   try {
     const scores = await callApi("leaderboard", { query: `&date=${date}` });
@@ -231,7 +238,7 @@ async function loadLeaderboard(date) {
     scores.forEach((data, index) => {
       const item = document.createElement("li");
       item.className = "score-row";
-      item.innerHTML = `<span>${index + 1}. ${data.displayName}</span><strong>${data.guessesUsed} guesses</strong>`;
+      item.innerHTML = `<span>${index + 1}. ${data.displayName}</span><strong>${data.guessesUsed} guesses · ${formatDuration(data.durationSeconds)}</strong>`;
       leaderboardList.append(item);
     });
   } catch {

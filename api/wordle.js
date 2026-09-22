@@ -149,8 +149,23 @@ module.exports = async (request, response) => {
     if (action === "guess" && request.method === "POST") return response.status(200).json(await submitGuess(user, String(request.body.guess || "").toLowerCase()));
     if (action === "leaderboard") {
       const date = request.query.date || getDateKey();
-      const scores = await database.collection(`leaderboards/${date}/scores`).orderBy("guessesUsed").orderBy("durationSeconds").limit(10).get();
-      return response.status(200).json(scores.docs.map((score) => score.data()));
+      const scores = await database.collection(`leaderboards/${date}/scores`).get();
+      const rankedScores = scores.docs
+        .map((score) => score.data())
+        .sort((first, second) => {
+          if (first.guessesUsed !== second.guessesUsed) {
+            return first.guessesUsed - second.guessesUsed;
+          }
+
+          if (first.durationSeconds !== second.durationSeconds) {
+            return first.durationSeconds - second.durationSeconds;
+          }
+
+          return (first.completedAt?.seconds || 0) - (second.completedAt?.seconds || 0);
+        })
+        .slice(0, 10);
+
+      return response.status(200).json(rankedScores);
     }
     if (action === "admin-status") return response.status(200).json({ isAdmin: await isAdmin(database, user.uid) });
     if (action === "publish" && request.method === "POST") {
