@@ -204,9 +204,9 @@ button { cursor: pointer; }
   min-width: 32px;
   height: 46px;
   padding: 0 9px;
-  border: 1px solid rgb(180 219 210 / 32%);
+  border: 1px solid #506269;
   border-radius: 5px;
-  background: rgb(49 89 91 / 88%);
+  background: #111a1d;
   color: white;
   font-size: .8rem;
   font-weight: 800;
@@ -217,11 +217,11 @@ button { cursor: pointer; }
   font-size: .66rem;
 }
 
-.key:hover:not(:disabled) { background: #638e8b; }
-.key.correct { border-color: #98ca85; background: #4f8a58; }
-.key.present { border-color: #e6c96b; background: #ad9141; }
-.key.absent { border-color: #283a3e; background: #25373b; color: #7e9290; }
-.key.absent:disabled { cursor: not-allowed; opacity: .72; }
+.key:hover:not(:disabled) { background: #23373b; }
+.key.correct { border-color: #9ed383; background: #4f914f; }
+.key.present { border-color: #f0cf68; background: #b89636; }
+.key.absent { border-color: #7d8c91; background: #657278; color: #e8eeee; }
+.key.absent:disabled { cursor: not-allowed; opacity: 1; }
 
 input {
   border: 1px solid #56565a;
@@ -247,7 +247,7 @@ input:focus {
   pointer-events: none;
 }
 
-button:not(.icon-button):not(.close-button):not(.text-button) {
+button:not(.icon-button):not(.close-button):not(.text-button):not(.key) {
   border: 0;
   border-radius: 4px;
   padding: 10px 14px;
