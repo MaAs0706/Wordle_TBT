@@ -54,6 +54,10 @@ function scoreGuess(guess, answer) {
   return result;
 }
 
+function getPuzzleVersion(puzzle, date) {
+  return puzzle.version ?? date;
+}
+
 async function getUser(request) {
   const authorization = request.headers.authorization || "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : null;
@@ -90,13 +94,14 @@ async function startPuzzle(user) {
     database.doc(`users/${user.uid}`).get(),
     sessionReference.get(),
   ]);
+  const puzzleVersion = getPuzzleVersion(puzzle, date);
   let session = sessionSnapshot;
 
-  if (!session.exists || session.data().puzzleVersion !== puzzle.version) {
+  if (!session.exists || session.data().puzzleVersion !== puzzleVersion) {
     const data = {
       date,
       userId: user.uid,
-      puzzleVersion: puzzle.version,
+      puzzleVersion,
       guesses: [],
       finished: false,
       startedAt: Timestamp.now(),
@@ -133,7 +138,7 @@ async function submitGuess(user, guess) {
     if (!sessionSnapshot.exists) throw new Error("Start today’s puzzle first.");
 
     const session = sessionSnapshot.data();
-    if (session.puzzleVersion !== puzzle.version) {
+    if (session.puzzleVersion !== getPuzzleVersion(puzzle, date)) {
       throw new Error("A newer puzzle is available. Reload the page to play it.");
     }
     if (!/^[a-z]+$/.test(guess) || guess.length !== puzzle.wordLength) throw new Error(`Enter exactly ${puzzle.wordLength} letters.`);
