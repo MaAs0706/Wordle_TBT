@@ -32,6 +32,8 @@ const guessDistribution = document.querySelector("#guess-distribution");
 function resetCardTilt() {
   playerStats.style.setProperty("--tilt-x", "0deg");
   playerStats.style.setProperty("--tilt-y", "0deg");
+  playerStats.style.setProperty("--drift-x", "0px");
+  playerStats.style.setProperty("--drift-y", "0px");
   playerStats.classList.remove("is-tilting");
 }
 
@@ -43,6 +45,8 @@ playerStats.addEventListener("pointermove", (event) => {
   playerStats.classList.add("is-tilting");
   playerStats.style.setProperty("--tilt-x", `${vertical * -5}deg`);
   playerStats.style.setProperty("--tilt-y", `${horizontal * 9}deg`);
+  playerStats.style.setProperty("--drift-x", `${horizontal * 11}px`);
+  playerStats.style.setProperty("--drift-y", `${vertical * 3}px`);
 });
 
 playerStats.addEventListener("pointerleave", resetCardTilt);

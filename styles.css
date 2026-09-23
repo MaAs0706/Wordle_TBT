@@ -426,6 +426,8 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .profile-page-card {
   --tilt-x: 0deg;
   --tilt-y: 0deg;
+  --drift-x: 0px;
+  --drift-y: 0px;
   max-width: 540px;
   margin: 38px auto;
   padding: 15px;
@@ -441,10 +443,10 @@ button:disabled { cursor: not-allowed; opacity: .55; }
     0 0 32px rgb(255 203 71 / 42%),
     inset 0 0 0 3px rgb(255 241 172 / 25%),
     inset -9px -8px 14px rgb(49 26 9 / 38%);
-  transform: perspective(1000px) rotateX(calc(3deg + var(--tilt-x))) rotateY(calc(-5deg + var(--tilt-y)));
+  transform: perspective(1000px) translate3d(var(--drift-x), var(--drift-y), 0) rotateX(calc(3deg + var(--tilt-x))) rotateY(calc(-5deg + var(--tilt-y)));
   transform-style: preserve-3d;
   transition: transform 420ms ease, box-shadow 350ms ease;
-  animation: journal-open 480ms ease both;
+  animation: card-appear 480ms ease both, card-float 4.8s ease-in-out 550ms infinite;
 }
 
 .profile-page-card.is-tilting { transition-duration: 90ms, 180ms; }
@@ -804,6 +806,16 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 @keyframes pedestal-pulse {
   0%, 100% { opacity: .76; filter: brightness(.9); }
   50% { opacity: 1; filter: brightness(1.22); }
+}
+
+@keyframes card-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -13px; }
+}
+
+@keyframes card-appear {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes card-glow {
