@@ -334,11 +334,11 @@ async function getPlayerStats(user) {
     distribution,
     achievements: {
       firstSolve: winningGames.length >= 1,
-      threeWeekStreak: (profile.bestStreak || 0) >= 3,
-      fiveWeekStreak: (profile.bestStreak || 0) >= 5,
+      fourWeekStreak: (profile.bestStreak || 0) >= 4,
+      eightWeekStreak: (profile.bestStreak || 0) >= 8,
       twoGuessSolve: hasTwoGuessSolve,
       perfectSolve: hasPerfectSolve,
-      hallTopTen: position >= 0 && position < 10,
+      hallTopFive: position >= 0 && position < 5,
     },
   };
 }

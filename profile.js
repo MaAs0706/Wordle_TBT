@@ -32,11 +32,11 @@ const achievementGrid = document.querySelector("#achievement-grid");
 
 const achievementDefinitions = [
   { id: "firstSolve", name: "First Light", description: "Solve your first weekly word.", art: "badge-book" },
-  { id: "threeWeekStreak", name: "Storm Keeper", description: "Reach a 3-week streak.", art: "badge-lightning" },
-  { id: "fiveWeekStreak", name: "Evergreen Flame", description: "Reach a 5-week streak.", art: "badge-flame" },
+  { id: "fourWeekStreak", name: "Storm Keeper", description: "Solve 4 weekly words in a row.", art: "badge-lightning" },
+  { id: "eightWeekStreak", name: "Evergreen Flame", description: "Solve 8 weekly words in a row.", art: "badge-flame" },
   { id: "twoGuessSolve", name: "Crystal Insight", description: "Solve in 2 guesses or fewer.", art: "badge-tiles" },
   { id: "perfectSolve", name: "Crowned Clarity", description: "Win a puzzle without a grey tile.", art: "badge-crown" },
-  { id: "hallTopTen", name: "Hall Laureate", description: "Reach the Hall of Fame top 10.", art: "badge-trophy" },
+  { id: "hallTopFive", name: "Hall Laureate", description: "Reach the Hall of Fame top 5.", art: "badge-trophy" },
 ];
 
 function resetCardTilt() {
@@ -105,7 +105,8 @@ function renderAchievements(achievements = {}) {
     const item = document.createElement("article");
     item.className = `achievement ${unlocked ? "unlocked" : "locked"}`;
     item.style.setProperty("--achievement-delay", `${index * 80}ms`);
-    item.title = unlocked ? achievement.description : `Locked: ${achievement.description}`;
+    item.tabIndex = 0;
+    item.title = `${unlocked ? "Unlocked" : "Locked"}: ${achievement.description}`;
 
     const art = document.createElement("span");
     art.className = `achievement-art ${achievement.art}`;
@@ -116,11 +117,16 @@ function renderAchievements(achievements = {}) {
     const name = document.createElement("strong");
     name.textContent = achievement.name;
     const description = document.createElement("small");
-    description.textContent = unlocked ? achievement.description : "Locked";
+    description.textContent = unlocked ? "Unlocked" : "Locked";
+
+    const tooltip = document.createElement("span");
+    tooltip.className = "achievement-tooltip";
+    tooltip.setAttribute("role", "tooltip");
+    tooltip.textContent = achievement.description;
 
     copy.append(name, description);
 
-    item.append(art, copy);
+    item.append(art, copy, tooltip);
     achievementGrid.append(item);
   });
 }
