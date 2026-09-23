@@ -308,6 +308,8 @@ async function getPlayerStats(user) {
     .filter((session) => session.finished);
   const winningGames = completedGames.filter((session) => session.solved);
   const guessesUsed = winningGames.map((session) => session.guesses.length);
+  const hasTwoGuessSolve = guessesUsed.some((guesses) => guesses <= 2);
+  const hasPerfectSolve = winningGames.some((session) => session.guesses.every((guess) => !guess.result.includes("absent")));
   const totalGuesses = guessesUsed.reduce((total, guesses) => total + guesses, 0);
   const largestGuessCount = Math.max(6, ...guessesUsed);
   const distribution = Array.from({ length: largestGuessCount }, (_, index) => ({
@@ -330,6 +332,14 @@ async function getPlayerStats(user) {
     totalPoints: profile.totalPoints || 0,
     hallRank: position === -1 ? null : position + 1,
     distribution,
+    achievements: {
+      firstSolve: winningGames.length >= 1,
+      threeWeekStreak: (profile.bestStreak || 0) >= 3,
+      fiveWeekStreak: (profile.bestStreak || 0) >= 5,
+      twoGuessSolve: hasTwoGuessSolve,
+      perfectSolve: hasPerfectSolve,
+      hallTopTen: position >= 0 && position < 10,
+    },
   };
 }
 

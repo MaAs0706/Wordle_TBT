@@ -753,6 +753,93 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 
 .profile-card-footer strong { color: #f5cf72; }
 
+.achievement-heading {
+  display: flex;
+  justify-content: space-between;
+  margin: 16px 2px 8px;
+  color: #f5cf72;
+  font-size: .7rem;
+  font-weight: bold;
+  letter-spacing: .08em;
+}
+
+.achievement-heading small {
+  color: #b7d1cb;
+  font-size: .61rem;
+  font-weight: normal;
+  letter-spacing: .02em;
+  text-transform: none;
+}
+
+.achievement-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.achievement {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 7px;
+  border: 1px solid rgb(220 235 230 / 18%);
+  border-radius: 9px;
+  background: linear-gradient(145deg, rgb(19 61 65 / 74%), rgb(5 29 38 / 74%));
+  text-align: center;
+  animation: achievement-arrive 460ms ease var(--achievement-delay) both;
+}
+
+.achievement.unlocked {
+  border-color: rgb(245 207 107 / 48%);
+  box-shadow: inset 0 1px 0 rgb(255 239 172 / 17%), 0 0 13px rgb(229 191 82 / 13%);
+}
+
+.achievement.locked {
+  filter: grayscale(1);
+  opacity: .48;
+}
+
+.achievement-art {
+  display: block;
+  width: min(72px, 100%);
+  aspect-ratio: 1;
+  justify-self: center;
+  border-radius: 50%;
+  background-image: url("assets/achievement-badges.png");
+  background-repeat: no-repeat;
+  background-size: 300% 200%;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 34%);
+}
+
+.badge-book { background-position: 0 0; }
+.badge-lightning { background-position: 50% 0; }
+.badge-flame { background-position: 100% 0; }
+.badge-tiles { background-position: 0 100%; }
+.badge-crown { background-position: 50% 100%; }
+.badge-trophy { background-position: 100% 100%; }
+
+.achievement-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.achievement-copy strong {
+  overflow: hidden;
+  color: #fff0af;
+  font-size: .58rem;
+  letter-spacing: .015em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.achievement-copy small {
+  min-height: 25px;
+  color: #c1d7d1;
+  font-size: .52rem;
+  line-height: 1.25;
+}
+
 .profile-page-card .distribution-heading { margin: 13px 2px 0; }
 
 .profile-ranks-link {
@@ -1107,6 +1194,11 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 @keyframes player-card-float {
   0%, 100% { transform: translateY(0) rotateX(0); }
   50% { transform: translateY(-5px) rotateX(1.2deg); }
+}
+
+@keyframes achievement-arrive {
+  from { opacity: 0; transform: translateY(8px) scale(.94); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes pedestal-pulse {
