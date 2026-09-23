@@ -29,6 +29,25 @@ const statsWinsValue = document.querySelector("#stats-wins-value");
 const profileLevel = document.querySelector("#profile-level");
 const guessDistribution = document.querySelector("#guess-distribution");
 
+function resetCardTilt() {
+  playerStats.style.setProperty("--tilt-x", "0deg");
+  playerStats.style.setProperty("--tilt-y", "0deg");
+  playerStats.classList.remove("is-tilting");
+}
+
+playerStats.addEventListener("pointermove", (event) => {
+  const bounds = playerStats.getBoundingClientRect();
+  const horizontal = ((event.clientX - bounds.left) / bounds.width - 0.5) * 2;
+  const vertical = ((event.clientY - bounds.top) / bounds.height - 0.5) * 2;
+
+  playerStats.classList.add("is-tilting");
+  playerStats.style.setProperty("--tilt-x", `${vertical * -5}deg`);
+  playerStats.style.setProperty("--tilt-y", `${horizontal * 9}deg`);
+});
+
+playerStats.addEventListener("pointerleave", resetCardTilt);
+playerStats.addEventListener("pointercancel", resetCardTilt);
+
 async function callApi(action) {
   const token = await auth.currentUser.getIdToken();
   const response = await fetch(`/api/wordle?action=${action}`, {
@@ -105,5 +124,6 @@ onAuthStateChanged(auth, (user) => {
     profileLoading.hidden = true;
     playerStats.hidden = true;
     cardPedestal.hidden = true;
+    resetCardTilt();
   }
 });

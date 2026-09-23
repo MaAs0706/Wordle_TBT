@@ -424,6 +424,8 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .profile-signed-out p:not(.eyebrow) { color: #bfd7d3; font-size: .88rem; line-height: 1.5; }
 
 .profile-page-card {
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
   max-width: 540px;
   margin: 38px auto;
   padding: 15px;
@@ -439,11 +441,13 @@ button:disabled { cursor: not-allowed; opacity: .55; }
     0 0 32px rgb(255 203 71 / 42%),
     inset 0 0 0 3px rgb(255 241 172 / 25%),
     inset -9px -8px 14px rgb(49 26 9 / 38%);
-  transform: perspective(1000px) rotateX(3deg) rotateY(-5deg);
+  transform: perspective(1000px) rotateX(calc(3deg + var(--tilt-x))) rotateY(calc(-5deg + var(--tilt-y)));
   transform-style: preserve-3d;
-  transition: transform 350ms ease, box-shadow 350ms ease;
-  animation: journal-open 480ms ease both, card-hover 4.8s ease-in-out 550ms infinite;
+  transition: transform 420ms ease, box-shadow 350ms ease;
+  animation: journal-open 480ms ease both;
 }
+
+.profile-page-card.is-tilting { transition-duration: 90ms, 180ms; }
 
 .profile-page-card:hover {
   box-shadow:
@@ -795,11 +799,6 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 @keyframes player-card-float {
   0%, 100% { transform: translateY(0) rotateX(0); }
   50% { transform: translateY(-5px) rotateX(1.2deg); }
-}
-
-@keyframes card-hover {
-  0%, 100% { transform: perspective(1000px) rotateX(3deg) rotateY(-5deg) translateY(0); }
-  50% { transform: perspective(1000px) rotateX(5deg) rotateY(-2deg) translateY(-15px); }
 }
 
 @keyframes pedestal-pulse {
