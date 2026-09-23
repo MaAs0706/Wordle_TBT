@@ -176,7 +176,7 @@ function renderLoadingBoard() {
   }
 }
 
-function renderBoard() {
+function renderBoard(revealedRowIndex = null, celebrateWin = false) {
   board.style.setProperty("--word-length", game.wordLength);
   board.replaceChildren();
 
@@ -186,6 +186,7 @@ function renderBoard() {
     const isActiveRow = rowIndex === game.guesses.length && !game.finished;
 
     row.className = "row";
+    row.dataset.rowIndex = rowIndex;
     row.style.gridTemplateColumns = `repeat(${game.wordLength}, 1fr)`;
 
     for (let letterIndex = 0; letterIndex < game.wordLength; letterIndex += 1) {
@@ -194,7 +195,16 @@ function renderBoard() {
 
       if (submittedGuess) {
         cell.textContent = submittedGuess.word[letterIndex];
-        cell.classList.add(submittedGuess.result[letterIndex], "revealed");
+        cell.classList.add(submittedGuess.result[letterIndex]);
+        if (rowIndex === revealedRowIndex) {
+          cell.classList.add("revealed");
+
+          if (submittedGuess.result[letterIndex] === "correct") {
+            cell.addEventListener("animationend", (event) => {
+              if (event.animationName === "flip-tile") cell.classList.add("correct-pop");
+            }, { once: true });
+          }
+        }
         cell.style.setProperty("--tile-index", letterIndex);
       } else if (isActiveRow && game.activeGuess[letterIndex]) {
         cell.textContent = game.activeGuess[letterIndex];
@@ -208,6 +218,16 @@ function renderBoard() {
   }
 
   renderKeyboard();
+
+  if (celebrateWin && revealedRowIndex !== null) {
+    window.setTimeout(() => {
+      board.querySelector(`[data-row-index="${revealedRowIndex}"]`)?.classList.add("win-row");
+    }, getRevealDuration() + 250);
+  }
+}
+
+function getRevealDuration() {
+  return 520 + ((game.wordLength - 1) * 110);
 }
 
 function renderKeyboard() {
@@ -304,9 +324,10 @@ async function submitGuess() {
       ? "Puzzle complete"
       : `Guess ${game.guesses.length + 1} of ${game.maxGuesses}`;
     setStatus(result.message);
-    renderBoard();
+    const revealedRowIndex = result.guesses.length - 1;
+    renderBoard(revealedRowIndex, result.solved);
 
-    if (result.finished) showResult(result);
+    if (result.finished) showResult(result, getRevealDuration() + 250);
   } catch (error) {
     setStatus(error.message || "Could not submit that guess.", true);
     guessButton.disabled = false;
@@ -315,7 +336,7 @@ async function submitGuess() {
   }
 }
 
-function showResult(result) {
+function showResult(result, revealDuration = 0) {
   resultEyebrow.textContent = result.solved ? "PUZZLE SOLVED" : "PUZZLE COMPLETE";
   resultTitle.textContent = result.solved ? "Well played!" : "Nice try";
   resultCopy.textContent = result.solved
@@ -328,7 +349,7 @@ function showResult(result) {
   shareResultButton.dataset.result = result.solved ? JSON.stringify(result) : "";
   nextPuzzle.textContent = `A new word arrives in ${getTimeUntilNextWeek()}.`;
   streakCount.textContent = result.currentStreak || 0;
-  window.setTimeout(() => resultDialog.showModal(), 650);
+  window.setTimeout(() => resultDialog.showModal(), revealDuration + 450);
 }
 
 function drawRoundedRectangle(context, x, y, width, height, radius) {
