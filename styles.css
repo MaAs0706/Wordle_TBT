@@ -99,13 +99,14 @@ button { cursor: pointer; }
   width: 28px;
   height: 28px;
   place-items: center;
-  padding: 0;
+  padding: 0 0 3px;
   border: 1px solid rgb(188 222 215 / 55%);
   border-radius: 50%;
   background: rgb(8 45 51 / 62%);
   color: #e8f3ef;
   font-size: .88rem;
   font-weight: bold;
+  line-height: 1;
   transition: transform 130ms ease, background 130ms ease, border-color 130ms ease;
 }
 
