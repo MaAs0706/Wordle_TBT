@@ -10,6 +10,7 @@ import { firebaseConfig } from "./firebase-config.js";
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
+const plannerShell = document.querySelector("#planner-shell");
 const plannerLoading = document.querySelector("#planner-loading");
 const signedOutPanel = document.querySelector("#planner-signed-out");
 const forbiddenPanel = document.querySelector("#planner-forbidden");
@@ -263,15 +264,14 @@ onAuthStateChanged(auth, async (user) => {
   plannerContent.hidden = true;
 
   if (!user) {
-    plannerLoading.hidden = true;
+    window.location.replace("index.html");
     return;
   }
 
   try {
     const status = await callApi("admin-status");
     if (!status.isAdmin) {
-      plannerLoading.hidden = true;
-      forbiddenPanel.hidden = false;
+      window.location.replace("index.html");
       return;
     }
 
@@ -280,7 +280,8 @@ onAuthStateChanged(auth, async (user) => {
     await loadPuzzleVault();
     plannerLoading.hidden = true;
     plannerContent.hidden = false;
+    plannerShell.hidden = false;
   } catch {
-    plannerLoading.textContent = "The Puzzle Vault could not be opened right now.";
+    window.location.replace("index.html");
   }
 });
