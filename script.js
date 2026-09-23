@@ -38,6 +38,7 @@ const resultCopy = document.querySelector("#result-copy");
 const resultStreak = document.querySelector("#result-streak");
 const nextPuzzle = document.querySelector("#next-puzzle");
 const closeResultButton = document.querySelector("#close-result");
+const shareResultButton = document.querySelector("#share-result");
 const puzzleCountdown = document.querySelector("#puzzle-countdown");
 
 let game;
@@ -285,9 +286,50 @@ function showResult(result) {
   resultStreak.textContent = result.solved
     ? `${result.currentStreak}-day streak · ${result.totalPoints} total points · Hall rank #${result.allTimeRank}`
     : "";
+  shareResultButton.hidden = !result.solved;
+  shareResultButton.dataset.result = result.solved ? JSON.stringify(result) : "";
   nextPuzzle.textContent = `A new word arrives in ${getTimeUntilTomorrow()}.`;
   streakCount.textContent = result.currentStreak || 0;
   window.setTimeout(() => resultDialog.showModal(), 650);
+}
+
+function createShareResult(result) {
+  const squares = { correct: "🟩", present: "🟨", absent: "⬛" };
+  const grid = result.guesses
+    .map((guess) => guess.result.map((state) => squares[state]).join(""))
+    .join("\n");
+
+  return [
+    `WORDLE · ${game.date}`,
+    "",
+    grid,
+    "",
+    `Solved in ${result.guessesUsed}/${game.maxGuesses} · ${result.pointsEarned} points`,
+    `⚡ ${result.currentStreak}-day streak · Hall rank #${result.allTimeRank}`,
+  ].join("\n");
+}
+
+async function shareResult() {
+  const result = JSON.parse(shareResultButton.dataset.result || "null");
+  if (!result) return;
+
+  const shareText = createShareResult(result);
+
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: "My Wordle result", text: shareText });
+      return;
+    }
+
+    await navigator.clipboard.writeText(shareText);
+    shareResultButton.textContent = "Copied to clipboard";
+    window.setTimeout(() => { shareResultButton.textContent = "Share result"; }, 2_200);
+  } catch (error) {
+    if (error.name !== "AbortError") {
+      shareResultButton.textContent = "Could not share";
+      window.setTimeout(() => { shareResultButton.textContent = "Share result"; }, 2_200);
+    }
+  }
 }
 
 function getTimeUntilTomorrow() {
@@ -410,6 +452,7 @@ closeAccountButton.addEventListener("click", () => accountDialog.close());
 googleSignInButton.addEventListener("click", signIn);
 signOutButton.addEventListener("click", () => signOut(auth));
 closeResultButton.addEventListener("click", () => resultDialog.close());
+shareResultButton.addEventListener("click", shareResult);
 
 onAuthStateChanged(auth, (user) => {
   setSignedInView(user);
