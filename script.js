@@ -324,26 +324,148 @@ function createShareResult(result) {
   ].join("\n");
 }
 
-async function shareResult() {
+function drawRoundedRectangle(context, x, y, width, height, radius) {
+  context.beginPath();
+  context.roundRect(x, y, width, height, radius);
+  context.fill();
+}
+
+function canvasToBlob(canvas) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error("Could not create share image."));
+    }, "image/png");
+  });
+}
+
+async function createShareCard(result) {
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  const colors = { correct: "#538d4e", present: "#b59f3b", absent: "#3a3a3c" };
+  const gridWidth = 760;
+  const cellGap = 16;
+  const cellSize = Math.floor((gridWidth - ((game.wordLength - 1) * cellGap)) / game.wordLength);
+  const gridStartY = 450;
+  const gridHeight = result.guesses.length * cellSize + Math.max(0, result.guesses.length - 1) * cellGap;
+  const size = { width: 1200, height: Math.max(1500, gridStartY + gridHeight + 390) };
+  const gridStartX = Math.round((size.width - gridWidth) / 2);
+
+  canvas.width = size.width;
+  canvas.height = size.height;
+
+  const background = context.createLinearGradient(0, 0, size.width, size.height);
+  background.addColorStop(0, "#062f38");
+  background.addColorStop(.58, "#0d5055");
+  background.addColorStop(1, "#082833");
+  context.fillStyle = background;
+  context.fillRect(0, 0, size.width, size.height);
+
+  const glow = context.createRadialGradient(920, 150, 30, 920, 150, 600);
+  glow.addColorStop(0, "rgb(251 210 108 / 38%)");
+  glow.addColorStop(1, "rgb(251 210 108 / 0%)");
+  context.fillStyle = glow;
+  context.fillRect(0, 0, size.width, size.height);
+
+  context.fillStyle = "rgb(5 29 37 / 78%)";
+  drawRoundedRectangle(context, 70, 70, 1060, size.height - 140, 48);
+  context.strokeStyle = "#e7c662";
+  context.lineWidth = 4;
+  context.strokeRect(92, 92, 1016, size.height - 184);
+
+  context.fillStyle = "#f5d171";
+  context.font = "700 30px Avenir Next, Arial, sans-serif";
+  context.textAlign = "center";
+  context.fillText("WORD KEEPER'S RESULT", size.width / 2, 180);
+  context.fillStyle = "#ffffff";
+  context.font = "800 78px Avenir Next, Arial, sans-serif";
+  context.fillText("WORDLE", size.width / 2, 275);
+  context.fillStyle = "#bdd8d2";
+  context.font = "600 31px Avenir Next, Arial, sans-serif";
+  context.fillText(game.date, size.width / 2, 325);
+
+  result.guesses.forEach((guess, rowIndex) => {
+    guess.result.forEach((state, columnIndex) => {
+      const x = gridStartX + columnIndex * (cellSize + cellGap);
+      const y = gridStartY + rowIndex * (cellSize + cellGap);
+      context.fillStyle = colors[state];
+      drawRoundedRectangle(context, x, y, cellSize, cellSize, 14);
+      context.strokeStyle = "rgb(255 255 255 / 24%)";
+      context.lineWidth = 3;
+      context.strokeRect(x + 2, y + 2, cellSize - 4, cellSize - 4);
+    });
+  });
+
+  const gridBottom = gridStartY + gridHeight;
+  context.strokeStyle = "rgb(233 202 108 / 42%)";
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(185, gridBottom + 84);
+  context.lineTo(1015, gridBottom + 84);
+  context.stroke();
+
+  context.fillStyle = "#fff3c3";
+  context.font = "700 47px Avenir Next, Arial, sans-serif";
+  context.fillText(`Solved in ${result.guessesUsed}/${game.maxGuesses}`, size.width / 2, gridBottom + 165);
+  context.fillStyle = "#f5d171";
+  context.font = "700 34px Avenir Next, Arial, sans-serif";
+  const points = result.pointsEarned ? ` · ${result.pointsEarned} points` : "";
+  context.fillText(`⚡ ${result.currentStreak || game.currentStreak || 0}-day streak${points}`, size.width / 2, gridBottom + 224);
+  context.fillStyle = "#b8d4ce";
+  context.font = "600 28px Avenir Next, Arial, sans-serif";
+  context.fillText(result.allTimeRank ? `Hall of Fame rank #${result.allTimeRank}` : "One word. One challenge.", size.width / 2, gridBottom + 280);
+
+  context.fillStyle = "#e7c662";
+  context.font = "700 25px Avenir Next, Arial, sans-serif";
+  context.fillText("WORDLE TBT", size.width / 2, size.height - 70);
+  return canvasToBlob(canvas);
+}
+
+function downloadShareCard(blob) {
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `wordle-${game.date}-result.png`;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(link.href), 1_000);
+}
+
+async function shareResult(button = shareResultButton) {
   const result = JSON.parse(shareResultButton.dataset.result || "null");
   if (!result) return;
 
   const shareText = createShareResult(result);
+  const previousLabel = button.textContent;
+  button.disabled = true;
+  button.textContent = "Creating image card…";
 
   try {
-    if (navigator.share) {
-      await navigator.share({ title: "My Wordle result", text: shareText });
+    const cardBlob = await createShareCard(result);
+    const cardFile = new File([cardBlob], `wordle-${game.date}-result.png`, { type: "image/png" });
+
+    if (navigator.canShare?.({ files: [cardFile] })) {
+      await navigator.share({
+        files: [cardFile],
+        title: "My Wordle result",
+        text: shareText,
+      });
       return;
     }
 
-    await navigator.clipboard.writeText(shareText);
-    shareResultButton.textContent = "Copied to clipboard";
-    window.setTimeout(() => { shareResultButton.textContent = "Share result"; }, 2_200);
+    downloadShareCard(cardBlob);
+    try {
+      await navigator.clipboard.writeText(shareText);
+      button.textContent = "Image downloaded · result copied";
+    } catch {
+      button.textContent = "Image downloaded";
+    }
+    window.setTimeout(() => { button.textContent = previousLabel; }, 2_500);
   } catch (error) {
     if (error.name !== "AbortError") {
-      shareResultButton.textContent = "Could not share";
-      window.setTimeout(() => { shareResultButton.textContent = "Share result"; }, 2_200);
+      button.textContent = "Could not create image";
+      window.setTimeout(() => { button.textContent = previousLabel; }, 2_200);
     }
+  } finally {
+    button.disabled = false;
   }
 }
 
@@ -355,7 +477,7 @@ async function shareCompletedResult() {
     guessesUsed: game.guesses.length,
     currentStreak: game.currentStreak,
   });
-  await shareResult();
+  await shareResult(completedShareButton);
 }
 
 function getTimeUntilTomorrow() {
@@ -478,7 +600,7 @@ closeAccountButton.addEventListener("click", () => accountDialog.close());
 googleSignInButton.addEventListener("click", signIn);
 signOutButton.addEventListener("click", () => signOut(auth));
 closeResultButton.addEventListener("click", () => resultDialog.close());
-shareResultButton.addEventListener("click", shareResult);
+shareResultButton.addEventListener("click", () => shareResult());
 completedShareButton.addEventListener("click", shareCompletedResult);
 
 onAuthStateChanged(auth, (user) => {
