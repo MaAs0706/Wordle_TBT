@@ -82,8 +82,9 @@ function renderHistory(entries) {
     const top = document.createElement("div");
     top.className = "history-entry-top";
     const date = document.createElement("time");
-    date.dateTime = entry.weekKey;
-    date.textContent = formatDate(entry.weekKey).toUpperCase();
+    const completedDate = entry.completedDate || entry.weekKey;
+    date.dateTime = completedDate;
+    date.textContent = `COMPLETED · ${formatDate(completedDate).toUpperCase()}`;
     const outcome = document.createElement("strong");
     outcome.textContent = entry.solved ? "SOLVED" : "NOT SOLVED";
     const word = document.createElement("span");

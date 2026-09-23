@@ -360,6 +360,7 @@ async function getPlayerHistory(user) {
 
     return {
       weekKey,
+      completedDate: getDateKey(session.completedAt?.toDate?.() || session.updatedAt?.toDate?.() || new Date(`${weekKey}T00:00:00Z`)),
       solved: Boolean(session.solved),
       answer: answer?.toUpperCase() || null,
       guessesUsed: guesses.length,
