@@ -36,7 +36,7 @@ const achievementDefinitions = [
   { id: "eightWeekStreak", name: "Evergreen Flame", description: "Solve 8 weekly words in a row.", art: "badge-flame" },
   { id: "twoGuessSolve", name: "Crystal Insight", description: "Solve in 2 guesses or fewer.", art: "badge-tiles" },
   { id: "perfectSolve", name: "Crowned Clarity", description: "Win a puzzle without a grey tile.", art: "badge-crown" },
-  { id: "hallTopFive", name: "Hall Laureate", description: "Reach the Hall of Fame top 5.", art: "badge-trophy" },
+  { id: "hallLaureate", name: "Hall Laureate", description: "Finish in the weekly top 5 for 3 weeks in a row.", art: "badge-trophy" },
 ];
 
 function resetCardTilt() {

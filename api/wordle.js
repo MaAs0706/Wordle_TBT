@@ -321,6 +321,34 @@ async function getPlayerStats(user) {
     .map((score) => ({ userId: score.id, ...score.data() }))
     .sort((first, second) => second.totalPoints - first.totalPoints || second.bestStreak - first.bestStreak);
   const position = rankedScores.findIndex((score) => score.userId === user.uid);
+  const solvedWeeks = [...new Set(
+    winningGames
+      .map((session) => session.date)
+      .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+      .map((date) => getWeekKey(new Date(`${date}T00:00:00Z`))),
+  )];
+  const weeklyRanks = await Promise.all(solvedWeeks.map(async (weekKey) => {
+    const weeklyScores = await database.collection(`leaderboards/${weekKey}/scores`).get();
+    const rankedWeek = weeklyScores.docs
+      .map((score) => ({ userId: score.id, ...score.data() }))
+      .sort((first, second) => {
+        if (first.guessesUsed !== second.guessesUsed) return first.guessesUsed - second.guessesUsed;
+        if (first.durationSeconds !== second.durationSeconds) return first.durationSeconds - second.durationSeconds;
+        return (first.completedAt?.seconds || 0) - (second.completedAt?.seconds || 0);
+      });
+    const rank = rankedWeek.findIndex((score) => score.userId === user.uid) + 1;
+
+    return { weekKey, rank };
+  }));
+  const topFiveWeeks = new Set(
+    weeklyRanks
+      .filter((week) => week.rank > 0 && week.rank <= 5)
+      .map((week) => week.weekKey),
+  );
+  const hasThreeTopFiveWeeksInARow = [...topFiveWeeks].some((weekKey) => {
+    const previousWeek = getPreviousWeekKey(weekKey);
+    return topFiveWeeks.has(previousWeek) && topFiveWeeks.has(getPreviousWeekKey(previousWeek));
+  });
 
   return {
     gamesPlayed: completedGames.length,
@@ -338,7 +366,7 @@ async function getPlayerStats(user) {
       eightWeekStreak: (profile.bestStreak || 0) >= 8,
       twoGuessSolve: hasTwoGuessSolve,
       perfectSolve: hasPerfectSolve,
-      hallTopFive: position >= 0 && position < 5,
+      hallLaureate: hasThreeTopFiveWeeksInARow,
     },
   };
 }
