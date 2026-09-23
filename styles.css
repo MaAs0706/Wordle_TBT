@@ -961,6 +961,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 
 .history-entry-top strong { color: #f6e59a; font-size: .78rem; }
 .history-loss .history-entry-top strong { color: #e5afb1; }
+.history-answer { color: #e8f5ee; font-size: .68rem; font-weight: bold; letter-spacing: .08em; }
 
 .history-tiles { display: grid; gap: 3px; justify-items: end; }
 .history-tile-row { display: flex; gap: 3px; }

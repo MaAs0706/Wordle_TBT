@@ -264,7 +264,14 @@ async function submitGuess(user, guess) {
     }
     const completedAt = FieldValue.serverTimestamp();
     if (!solved) {
-      transaction.update(sessionReference, { guesses, solved, finished, updatedAt: Timestamp.now(), completedAt });
+      transaction.update(sessionReference, {
+        guesses,
+        solved,
+        finished,
+        updatedAt: Timestamp.now(),
+        completedAt,
+        answer: puzzle.answer.toUpperCase(),
+      });
       return { guesses, finished, solved, guessesUsed: guesses.length, answer: puzzle.answer.toUpperCase(), message: `The word was ${puzzle.answer.toUpperCase()}.` };
     }
 
@@ -282,7 +289,16 @@ async function submitGuess(user, guess) {
     const durationSeconds = Math.max(0, Timestamp.now().seconds - session.startedAt.seconds);
     const displayName = user.name || profile.displayName || "Player";
 
-    transaction.update(sessionReference, { guesses, solved, finished, updatedAt: Timestamp.now(), completedAt, currentStreak, pointsEarned });
+    transaction.update(sessionReference, {
+      guesses,
+      solved,
+      finished,
+      updatedAt: Timestamp.now(),
+      completedAt,
+      answer: puzzle.answer.toUpperCase(),
+      currentStreak,
+      pointsEarned,
+    });
     transaction.set(userReference, { displayName, currentStreak, bestStreak, totalPoints, lastSolvedWeek: date, updatedAt: completedAt }, { merge: true });
     transaction.set(leaderboardReference, { displayName, guessesUsed: guesses.length, durationSeconds, completedAt, currentStreak });
     transaction.set(database.doc(`leaderboards/all-time/scores/${user.uid}`), { displayName, totalPoints, currentStreak, bestStreak, updatedAt: completedAt });
@@ -310,31 +326,49 @@ async function getPlayerHistory(user) {
     .filter((session) => session.finished && /^\d{4}-\d{2}-\d{2}$/.test(session.date))
     .forEach((session) => {
       const weekKey = getWeekKey(new Date(`${session.date}T00:00:00Z`));
-      const knownSession = sessionsByWeek.get(weekKey);
+      const knownRecord = sessionsByWeek.get(weekKey);
+      const knownSession = knownRecord?.session;
       const sessionUpdatedAt = session.updatedAt?.seconds || session.completedAt?.seconds || 0;
       const knownUpdatedAt = knownSession?.updatedAt?.seconds || knownSession?.completedAt?.seconds || 0;
 
       if (!knownSession || sessionUpdatedAt > knownUpdatedAt) {
-        sessionsByWeek.set(weekKey, session);
+        sessionsByWeek.set(weekKey, {
+          session,
+          sourceDates: [...(knownRecord?.sourceDates || []), session.date],
+        });
+      } else {
+        knownRecord.sourceDates.push(session.date);
       }
     });
 
-  return [...sessionsByWeek.entries()]
+  const historyEntries = [...sessionsByWeek.entries()]
     .sort(([firstWeek], [secondWeek]) => secondWeek.localeCompare(firstWeek))
-    .map(([weekKey, session]) => {
-      const guesses = Array.isArray(session.guesses) ? session.guesses : [];
-      const wordLength = guesses[0]?.word?.length || Math.max(5, guesses.length - 1);
+    .map(([weekKey, record]) => ({ weekKey, ...record }));
 
-      return {
-        weekKey,
-        solved: Boolean(session.solved),
-        guessesUsed: guesses.length,
-        maxGuesses: wordLength + 1,
-        tileRows: guesses.map((guess) => guess.result || []),
-        pointsEarned: session.pointsEarned || null,
-        currentStreak: session.currentStreak || null,
-      };
-    });
+  return Promise.all(historyEntries.map(async ({ weekKey, session, sourceDates }) => {
+    const guesses = Array.isArray(session.guesses) ? session.guesses : [];
+    const wordLength = guesses[0]?.word?.length || Math.max(5, guesses.length - 1);
+    let answer = session.answer || (session.solved ? guesses.at(-1)?.word : null);
+
+    if (!answer) {
+      const possibleDates = [...new Set(sourceDates)];
+      const puzzleSnapshots = await Promise.all(
+        possibleDates.map((date) => database.doc(`privatePuzzles/${date}`).get()),
+      );
+      answer = puzzleSnapshots.find((puzzle) => puzzle.exists)?.data().answer || null;
+    }
+
+    return {
+      weekKey,
+      solved: Boolean(session.solved),
+      answer: answer?.toUpperCase() || null,
+      guessesUsed: guesses.length,
+      maxGuesses: wordLength + 1,
+      tileRows: guesses.map((guess) => guess.result || []),
+      pointsEarned: session.pointsEarned || null,
+      currentStreak: session.currentStreak || null,
+    };
+  }));
 }
 
 async function getPlayerStats(user) {
