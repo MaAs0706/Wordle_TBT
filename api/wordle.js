@@ -297,15 +297,27 @@ module.exports = async (request, response) => {
     if (action === "admin-puzzles") {
       if (!await isAdmin(database, user.uid)) return response.status(403).json({ error: "Admin access is required." });
       const today = getDateKey();
-      const puzzles = await database.collection("publicPuzzles").get();
-      const upcomingPuzzles = puzzles.docs
-        .map((puzzle) => ({ date: puzzle.id, ...puzzle.data() }))
-        .filter((puzzle) => puzzle.date >= today)
-        .sort((first, second) => first.date.localeCompare(second.date))
-        .slice(0, 14)
-        .map(({ date, wordLength, status }) => ({ date, wordLength, status }));
+      const puzzles = await database.collection("privatePuzzles").get();
+      const plannedPuzzles = puzzles.docs
+        .map((puzzle) => {
+          const data = puzzle.data();
+          return {
+            date: puzzle.id,
+            word: data.answer,
+            wordLength: data.wordLength,
+            updatedAt: data.updatedAt?.seconds || data.publishedAt?.seconds || 0,
+          };
+        });
 
-      return response.status(200).json(upcomingPuzzles);
+      return response.status(200).json({
+        today,
+        upcoming: plannedPuzzles
+          .filter((puzzle) => puzzle.date >= today)
+          .sort((first, second) => first.date.localeCompare(second.date)),
+        history: plannedPuzzles
+          .filter((puzzle) => puzzle.date < today)
+          .sort((first, second) => second.date.localeCompare(first.date)),
+      });
     }
     if (action === "publish" && request.method === "POST") {
       if (!await isAdmin(database, user.uid)) return response.status(403).json({ error: "Admin access is required." });
@@ -317,7 +329,7 @@ module.exports = async (request, response) => {
       }
       const version = Date.now();
       await Promise.all([
-        database.doc(`privatePuzzles/${date}`).set({ answer: word, wordLength: word.length, version, publishedBy: user.uid, publishedAt: FieldValue.serverTimestamp() }),
+        database.doc(`privatePuzzles/${date}`).set({ answer: word, wordLength: word.length, version, publishedBy: user.uid, publishedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() }),
         database.doc(`publicPuzzles/${date}`).set({ wordLength: word.length, version, status: "active", publishedAt: FieldValue.serverTimestamp() }),
       ]);
       if (date === getDateKey()) cachedPuzzle = undefined;

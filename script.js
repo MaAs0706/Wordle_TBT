@@ -31,13 +31,6 @@ const signOutButton = document.querySelector("#sign-out-button");
 const accountName = document.querySelector("#account-name");
 const accountCopy = document.querySelector("#account-copy");
 const openAdminButton = document.querySelector("#open-admin");
-const adminDialog = document.querySelector("#admin-dialog");
-const closeAdminButton = document.querySelector("#close-admin");
-const adminWordForm = document.querySelector("#admin-word-form");
-const dailyWordInput = document.querySelector("#daily-word");
-const dailyDateInput = document.querySelector("#daily-date");
-const adminMessage = document.querySelector("#admin-message");
-const scheduledPuzzlesList = document.querySelector("#scheduled-puzzles-list");
 const resultDialog = document.querySelector("#result-dialog");
 const resultEyebrow = document.querySelector("#result-eyebrow");
 const resultTitle = document.querySelector("#result-title");
@@ -385,76 +378,6 @@ async function signIn() {
   }
 }
 
-async function publishDailyWord(event) {
-  event.preventDefault();
-
-  const word = dailyWordInput.value.trim().toLowerCase();
-  const date = dailyDateInput.value;
-
-  if (!/^[a-z]{5,}$/.test(word)) {
-    adminMessage.textContent = "Enter at least 5 letters.";
-    adminMessage.classList.add("error");
-    return;
-  }
-
-  try {
-    const puzzle = await callApi("publish", { method: "POST", body: { word, date } });
-    adminMessage.textContent = puzzle.date === getIndiaDateKey()
-      ? "Today’s word is live."
-      : `Puzzle saved for ${formatPuzzleDate(puzzle.date)}.`;
-    adminMessage.classList.remove("error");
-    dailyWordInput.value = "";
-    await loadUpcomingPuzzles();
-    if (puzzle.date === getIndiaDateKey()) await loadGame();
-  } catch (error) {
-    adminMessage.textContent = error.message || "Could not publish the word.";
-    adminMessage.classList.add("error");
-  }
-}
-
-function formatPuzzleDate(date) {
-  return new Intl.DateTimeFormat("en-IN", {
-    timeZone: "Asia/Kolkata",
-    day: "numeric",
-    month: "short",
-  }).format(new Date(`${date}T00:00:00+05:30`));
-}
-
-async function loadUpcomingPuzzles() {
-  scheduledPuzzlesList.innerHTML = "<li>Loading upcoming puzzles…</li>";
-
-  try {
-    const puzzles = await callApi("admin-puzzles");
-    scheduledPuzzlesList.replaceChildren();
-
-    if (!puzzles.length) {
-      scheduledPuzzlesList.innerHTML = "<li>No upcoming puzzles yet.</li>";
-      return;
-    }
-
-    puzzles.forEach((puzzle) => {
-      const item = document.createElement("li");
-      const label = document.createElement("span");
-      const meta = document.createElement("strong");
-
-      label.textContent = puzzle.date === getIndiaDateKey() ? "Today" : formatPuzzleDate(puzzle.date);
-      meta.textContent = `${puzzle.wordLength} letters`;
-      item.append(label, meta);
-      scheduledPuzzlesList.append(item);
-    });
-  } catch {
-    scheduledPuzzlesList.innerHTML = "<li>Could not load the schedule.</li>";
-  }
-}
-
-function openAdminPlanner() {
-  dailyDateInput.min = getIndiaDateKey();
-  dailyDateInput.value = getIndiaDateKey();
-  adminMessage.textContent = "";
-  adminDialog.showModal();
-  loadUpcomingPuzzles();
-}
-
 guessForm.addEventListener("submit", (event) => {
   event.preventDefault();
   submitGuess();
@@ -467,7 +390,7 @@ guessInput.addEventListener("input", () => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (accountDialog.open || adminDialog.open || resultDialog.open) return;
+  if (accountDialog.open || resultDialog.open) return;
 
   if (/^[a-zA-Z]$/.test(event.key)) {
     event.preventDefault();
@@ -486,9 +409,6 @@ accountButton.addEventListener("click", () => accountDialog.showModal());
 closeAccountButton.addEventListener("click", () => accountDialog.close());
 googleSignInButton.addEventListener("click", signIn);
 signOutButton.addEventListener("click", () => signOut(auth));
-openAdminButton.addEventListener("click", openAdminPlanner);
-closeAdminButton.addEventListener("click", () => adminDialog.close());
-adminWordForm.addEventListener("submit", publishDailyWord);
 closeResultButton.addEventListener("click", () => resultDialog.close());
 
 onAuthStateChanged(auth, (user) => {

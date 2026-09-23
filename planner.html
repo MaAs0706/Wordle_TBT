@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Admin puzzle planner for Wordle.">
+  <title>Wordle Puzzle Vault</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="game-shell planner-shell">
+    <header class="header">
+      <a class="back-link" href="index.html">← Game</a>
+      <div>
+        <p class="eyebrow">ADMIN ARCHIVE</p>
+        <h1>PUZZLE VAULT</h1>
+        <p>Plan the words. Keep the magic moving.</p>
+      </div>
+    </header>
+
+    <p id="planner-loading" class="profile-loading" aria-live="polite">Opening the puzzle vault…</p>
+
+    <section id="planner-signed-out" class="profile-signed-out" hidden>
+      <p class="eyebrow">ADMIN ACCESS</p>
+      <h2>Sign in to continue.</h2>
+      <p>Only approved Wordle administrators can view or edit the daily word schedule.</p>
+      <button id="planner-sign-in" class="google-button" type="button">Continue with Google</button>
+    </section>
+
+    <section id="planner-forbidden" class="profile-signed-out" hidden>
+      <p class="eyebrow">ADMIN ACCESS</p>
+      <h2>This vault is locked.</h2>
+      <p>Your account is signed in, but it does not have puzzle-planning access.</p>
+      <a class="profile-link" href="index.html">Return to the game <span aria-hidden="true">←</span></a>
+    </section>
+
+    <section id="planner-content" class="planner-content" hidden>
+      <section class="planner-editor" aria-labelledby="planner-editor-title">
+        <div>
+          <p class="eyebrow">WORD FORGE</p>
+          <h2 id="planner-editor-title">Create or update a puzzle</h2>
+          <p>Choose any date from today onward. Selecting an existing upcoming card loads it here for editing.</p>
+        </div>
+        <form id="planner-form" class="planner-form">
+          <label for="planner-date">Puzzle date</label>
+          <input id="planner-date" type="date" required>
+          <label for="planner-word">Secret word</label>
+          <input id="planner-word" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="At least 5 letters" required>
+          <p id="planner-message" class="form-message" aria-live="polite"></p>
+          <button type="submit">Save puzzle</button>
+        </form>
+      </section>
+
+      <section class="planner-library" aria-label="Puzzle schedule">
+        <div class="planner-section-heading">
+          <div><p class="eyebrow">UPCOMING</p><h2>Planned words</h2></div>
+          <span id="upcoming-count" class="planner-count">0 scheduled</span>
+        </div>
+        <div id="upcoming-puzzles" class="puzzle-grid"></div>
+      </section>
+
+      <section class="planner-library history-library" aria-label="Puzzle history">
+        <div class="planner-section-heading">
+          <div><p class="eyebrow">THE ARCHIVE</p><h2>Past puzzle history</h2></div>
+          <span id="history-count" class="planner-count">0 recorded</span>
+        </div>
+        <p class="planner-note">Past words are preserved as history so completed games and scoreboards remain fair.</p>
+        <div id="history-puzzles" class="puzzle-grid history-grid"></div>
+      </section>
+    </section>
+  </main>
+  <script type="module" src="planner.js"></script>
+</body>
+</html>
