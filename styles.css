@@ -968,6 +968,38 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 
 .edit-puzzle-button:hover { background: rgb(126 101 44 / 78%); }
 
+.puzzle-card-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 7px;
+}
+
+.puzzle-card-actions button {
+  flex: 1 1 68px;
+  min-height: 34px;
+  padding: 7px 9px;
+  font-size: .68rem;
+}
+
+.move-puzzle-button {
+  background: rgb(22 88 95 / 82%);
+  border-color: rgb(163 219 210 / 56%);
+}
+
+.move-puzzle-button:hover { background: rgb(31 115 122 / 92%); }
+
+.delete-puzzle-button {
+  background: rgb(91 38 45 / 82%);
+  border-color: rgb(255 164 164 / 48%);
+  color: #ffd9d9;
+}
+
+.delete-puzzle-button:hover { background: rgb(130 47 57 / 92%); }
+
+.planner-dialog { width: min(420px, calc(100vw - 32px)); }
+
 .planner-note {
   margin: 13px 0 0;
   color: #b9cfca;

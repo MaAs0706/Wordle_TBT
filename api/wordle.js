@@ -425,6 +425,75 @@ module.exports = async (request, response) => {
       if (date >= getWeekKey()) cachedPuzzle = undefined;
       return response.status(200).json({ date, wordLength: word.length });
     }
+    if (action === "reschedule-puzzle" && request.method === "POST") {
+      if (!await isAdmin(database, user.uid)) return response.status(403).json({ error: "Admin access is required." });
+      const sourceDate = String(request.body.sourceDate || "");
+      const targetDate = String(request.body.targetDate || "");
+      const currentWeek = getWeekKey();
+
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(sourceDate) || sourceDate <= currentWeek) {
+        return response.status(400).json({ error: "Only future puzzles can be rescheduled." });
+      }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate) || targetDate <= currentWeek || !isThursday(targetDate)) {
+        return response.status(400).json({ error: "Choose a future Thursday for the rescheduled puzzle." });
+      }
+      if (sourceDate === targetDate) {
+        return response.status(400).json({ error: "Choose a different Thursday." });
+      }
+
+      const sourcePrivateReference = database.doc(`privatePuzzles/${sourceDate}`);
+      const sourcePublicReference = database.doc(`publicPuzzles/${sourceDate}`);
+      const targetPrivateReference = database.doc(`privatePuzzles/${targetDate}`);
+      const targetPublicReference = database.doc(`publicPuzzles/${targetDate}`);
+
+      await database.runTransaction(async (transaction) => {
+        const [sourcePrivate, sourcePublic, targetPrivate, targetPublic] = await Promise.all([
+          transaction.get(sourcePrivateReference),
+          transaction.get(sourcePublicReference),
+          transaction.get(targetPrivateReference),
+          transaction.get(targetPublicReference),
+        ]);
+
+        if (!sourcePrivate.exists) throw new Error("This planned puzzle no longer exists.");
+        if (targetPrivate.exists || targetPublic.exists) throw new Error("Another puzzle is already planned for that Thursday.");
+
+        transaction.set(targetPrivateReference, {
+          ...sourcePrivate.data(),
+          publishedBy: user.uid,
+          updatedAt: FieldValue.serverTimestamp(),
+          rescheduledFrom: sourceDate,
+        });
+        transaction.set(targetPublicReference, {
+          ...(sourcePublic.exists ? sourcePublic.data() : { wordLength: sourcePrivate.data().wordLength, status: "active" }),
+          updatedAt: FieldValue.serverTimestamp(),
+          rescheduledFrom: sourceDate,
+        });
+        transaction.delete(sourcePrivateReference);
+        transaction.delete(sourcePublicReference);
+      });
+
+      cachedPuzzle = undefined;
+      return response.status(200).json({ sourceDate, targetDate });
+    }
+    if (action === "delete-puzzle" && request.method === "POST") {
+      if (!await isAdmin(database, user.uid)) return response.status(403).json({ error: "Admin access is required." });
+      const date = String(request.body.date || "");
+
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date <= getWeekKey()) {
+        return response.status(400).json({ error: "Only future puzzles can be deleted." });
+      }
+
+      const privateReference = database.doc(`privatePuzzles/${date}`);
+      const privatePuzzle = await privateReference.get();
+      if (!privatePuzzle.exists) return response.status(404).json({ error: "This planned puzzle no longer exists." });
+
+      await Promise.all([
+        privateReference.delete(),
+        database.doc(`publicPuzzles/${date}`).delete(),
+      ]);
+      cachedPuzzle = undefined;
+      return response.status(200).json({ date });
+    }
     return response.status(404).json({ error: "Unknown action." });
   } catch (error) {
     return response.status(400).json({ error: error.message || "Request failed." });

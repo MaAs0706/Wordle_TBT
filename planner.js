@@ -23,6 +23,13 @@ const upcomingPuzzles = document.querySelector("#upcoming-puzzles");
 const historyPuzzles = document.querySelector("#history-puzzles");
 const upcomingCount = document.querySelector("#upcoming-count");
 const historyCount = document.querySelector("#history-count");
+const rescheduleDialog = document.querySelector("#reschedule-dialog");
+const closeRescheduleButton = document.querySelector("#close-reschedule");
+const rescheduleForm = document.querySelector("#reschedule-form");
+const rescheduleDate = document.querySelector("#reschedule-date");
+const rescheduleCopy = document.querySelector("#reschedule-copy");
+const rescheduleMessage = document.querySelector("#reschedule-message");
+let rescheduleSourcePuzzle;
 
 function getIndiaWeekKey() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -48,6 +55,10 @@ function getNextIndiaWeekKey() {
   const weekStart = new Date(`${getIndiaWeekKey()}T00:00:00Z`);
   weekStart.setUTCDate(weekStart.getUTCDate() + 7);
   return weekStart.toISOString().slice(0, 10);
+}
+
+function isThursday(date) {
+  return new Date(`${date}T00:00:00Z`).getUTCDay() === 4;
 }
 
 function formatDate(date) {
@@ -108,6 +119,9 @@ function renderPuzzleCards(puzzles, container, isEditable, today) {
     card.append(date, word, detail);
 
     if (isEditable) {
+      const actions = document.createElement("div");
+      actions.className = "puzzle-card-actions";
+
       const edit = document.createElement("button");
       edit.type = "button";
       edit.className = "edit-puzzle-button";
@@ -120,7 +134,25 @@ function renderPuzzleCards(puzzles, container, isEditable, today) {
         window.scrollTo({ top: 0, behavior: "smooth" });
         plannerWord.focus();
       });
-      card.append(edit);
+      actions.append(edit);
+
+      if (puzzle.date > today) {
+        const move = document.createElement("button");
+        move.type = "button";
+        move.className = "move-puzzle-button";
+        move.textContent = "Move";
+        move.addEventListener("click", () => openRescheduleDialog(puzzle));
+
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "delete-puzzle-button";
+        remove.textContent = "Delete";
+        remove.addEventListener("click", () => deletePuzzle(puzzle));
+
+        actions.append(move, remove);
+      }
+
+      card.append(actions);
     }
 
     container.append(card);
@@ -152,10 +184,67 @@ async function savePuzzle(event) {
     });
     plannerMessage.textContent = `Saved ${puzzle.word.toUpperCase()} for ${formatDate(puzzle.date)}.`;
     plannerMessage.classList.remove("error");
+    plannerDate.value = getNextIndiaWeekKey();
     plannerWord.value = "";
     await loadPuzzleVault();
   } catch (error) {
     plannerMessage.textContent = error.message || "Could not save this puzzle.";
+    plannerMessage.classList.add("error");
+  }
+}
+
+function openRescheduleDialog(puzzle) {
+  rescheduleSourcePuzzle = puzzle;
+  rescheduleDate.min = getNextIndiaWeekKey();
+  rescheduleDate.value = getNextIndiaWeekKey();
+  rescheduleCopy.textContent = `Move ${puzzle.word.toUpperCase()} from ${formatDate(puzzle.date)} to a future Thursday.`;
+  rescheduleMessage.textContent = "";
+  rescheduleMessage.classList.remove("error");
+  rescheduleDialog.showModal();
+}
+
+async function reschedulePuzzle(event) {
+  event.preventDefault();
+
+  if (!rescheduleSourcePuzzle) return;
+  if (!isThursday(rescheduleDate.value)) {
+    rescheduleMessage.textContent = "Choose a Thursday for the new weekly puzzle.";
+    rescheduleMessage.classList.add("error");
+    return;
+  }
+
+  try {
+    const result = await callApi("reschedule-puzzle", {
+      method: "POST",
+      body: {
+        sourceDate: rescheduleSourcePuzzle.date,
+        targetDate: rescheduleDate.value,
+      },
+    });
+    rescheduleDialog.close();
+    plannerMessage.textContent = `Moved ${rescheduleSourcePuzzle.word.toUpperCase()} to ${formatDate(result.targetDate)}.`;
+    plannerMessage.classList.remove("error");
+    await loadPuzzleVault();
+  } catch (error) {
+    rescheduleMessage.textContent = error.message || "Could not move this puzzle.";
+    rescheduleMessage.classList.add("error");
+  }
+}
+
+async function deletePuzzle(puzzle) {
+  const confirmation = window.confirm(`Delete ${puzzle.word.toUpperCase()} planned for ${formatDate(puzzle.date)}? This cannot be undone.`);
+  if (!confirmation) return;
+
+  try {
+    await callApi("delete-puzzle", {
+      method: "POST",
+      body: { date: puzzle.date },
+    });
+    plannerMessage.textContent = `Deleted the puzzle planned for ${formatDate(puzzle.date)}.`;
+    plannerMessage.classList.remove("error");
+    await loadPuzzleVault();
+  } catch (error) {
+    plannerMessage.textContent = error.message || "Could not delete this puzzle.";
     plannerMessage.classList.add("error");
   }
 }
@@ -165,6 +254,8 @@ signInButton.addEventListener("click", async () => {
 });
 
 plannerForm.addEventListener("submit", savePuzzle);
+rescheduleForm.addEventListener("submit", reschedulePuzzle);
+closeRescheduleButton.addEventListener("click", () => rescheduleDialog.close());
 
 onAuthStateChanged(auth, async (user) => {
   signedOutPanel.hidden = Boolean(user);
