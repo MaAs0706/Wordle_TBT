@@ -24,7 +24,7 @@ const historyPuzzles = document.querySelector("#history-puzzles");
 const upcomingCount = document.querySelector("#upcoming-count");
 const historyCount = document.querySelector("#history-count");
 
-function getIndiaDateKey() {
+function getIndiaWeekKey() {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Kolkata",
     year: "numeric",
@@ -37,7 +37,17 @@ function getIndiaDateKey() {
       .map(({ type, value }) => [type, value]),
   );
 
-  return `${values.year}-${values.month}-${values.day}`;
+  const calendarDate = new Date(`${values.year}-${values.month}-${values.day}T00:00:00Z`);
+  const daysSinceMonday = (calendarDate.getUTCDay() + 6) % 7;
+  calendarDate.setUTCDate(calendarDate.getUTCDate() - daysSinceMonday);
+
+  return calendarDate.toISOString().slice(0, 10);
+}
+
+function getNextIndiaWeekKey() {
+  const weekStart = new Date(`${getIndiaWeekKey()}T00:00:00Z`);
+  weekStart.setUTCDate(weekStart.getUTCDate() + 7);
+  return weekStart.toISOString().slice(0, 10);
 }
 
 function formatDate(date) {
@@ -105,7 +115,7 @@ function renderPuzzleCards(puzzles, container, isEditable, today) {
       edit.addEventListener("click", () => {
         plannerDate.value = puzzle.date;
         plannerWord.value = puzzle.word;
-        plannerMessage.textContent = `Editing ${puzzle.date === today ? "today’s" : formatDate(puzzle.date)} puzzle.`;
+        plannerMessage.textContent = `Editing the puzzle for ${formatDate(puzzle.date)}.`;
         plannerMessage.classList.remove("error");
         window.scrollTo({ top: 0, behavior: "smooth" });
         plannerWord.focus();
@@ -174,8 +184,8 @@ onAuthStateChanged(auth, async (user) => {
       return;
     }
 
-    plannerDate.min = getIndiaDateKey();
-    plannerDate.value = getIndiaDateKey();
+    plannerDate.min = getIndiaWeekKey();
+    plannerDate.value = getNextIndiaWeekKey();
     await loadPuzzleVault();
     plannerLoading.hidden = true;
     plannerContent.hidden = false;

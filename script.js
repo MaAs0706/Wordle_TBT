@@ -50,7 +50,7 @@ let isAdmin = false;
 let isSubmitting = false;
 let nextPuzzleTimer;
 let shouldStartGameAfterRules = false;
-const pagePuzzleDate = getIndiaDateKey();
+const pagePuzzleDate = getIndiaWeekKey();
 async function callApi(action, options = {}) {
   const token = await auth.currentUser.getIdToken();
   const request = await fetch(`/api/wordle?action=${action}${options.query || ""}`, {
@@ -120,8 +120,8 @@ async function updateAdminStatus() {
 
 async function loadGame() {
   guessButton.disabled = true;
-  guessRule.textContent = "Loading today’s puzzle";
-  setStatus("Preparing your puzzle…", false, true);
+  guessRule.textContent = "Loading this week’s puzzle";
+  setStatus("Preparing this week’s word…", false, true);
   renderLoadingBoard();
 
   try {
@@ -147,12 +147,12 @@ async function loadGame() {
     guessRule.textContent = game.finished
       ? "Puzzle complete"
       : `Guess ${Math.min(game.guesses.length + 1, game.maxGuesses)} of ${game.maxGuesses}`;
-    setStatus(game.finished ? "You have already completed today’s puzzle." : "Type your guess.");
+    setStatus(game.finished ? "You have already completed this week’s puzzle." : "Type your guess.");
     renderBoard();
     loadLeaderboard(game.date);
   } catch (error) {
-    guessRule.textContent = "Today’s puzzle is not available";
-    setStatus(error.message || "Today’s puzzle is not available yet.", true);
+    guessRule.textContent = "This week’s puzzle is not available";
+    setStatus(error.message || "This week’s puzzle is not available yet.", true);
   }
 }
 
@@ -319,14 +319,14 @@ function showResult(result) {
   resultEyebrow.textContent = result.solved ? "PUZZLE SOLVED" : "PUZZLE COMPLETE";
   resultTitle.textContent = result.solved ? "Well played!" : "Nice try";
   resultCopy.textContent = result.solved
-    ? `You solved today’s word in ${result.guessesUsed} guesses and earned ${result.pointsEarned} points.`
-    : `Today’s word was ${result.answer}.`;
+    ? `You solved this week’s word in ${result.guessesUsed} guesses and earned ${result.pointsEarned} points.`
+    : `This week’s word was ${result.answer}.`;
   resultStreak.textContent = result.solved
-    ? `${result.currentStreak}-day streak · ${result.totalPoints} total points · Hall rank #${result.allTimeRank}`
+    ? `${result.currentStreak}-week streak · ${result.totalPoints} total points · Hall rank #${result.allTimeRank}`
     : "";
   shareResultButton.hidden = !result.solved;
   shareResultButton.dataset.result = result.solved ? JSON.stringify(result) : "";
-  nextPuzzle.textContent = `A new word arrives in ${getTimeUntilTomorrow()}.`;
+  nextPuzzle.textContent = `A new word arrives in ${getTimeUntilNextWeek()}.`;
   streakCount.textContent = result.currentStreak || 0;
   window.setTimeout(() => resultDialog.showModal(), 650);
 }
@@ -406,14 +406,14 @@ async function createShareCard(result) {
   context.strokeRect(192, 447, 816, 171);
   context.fillStyle = "#f5d171";
   context.font = "700 23px Avenir Next, Arial, sans-serif";
-  context.fillText("TODAY'S WORD KEEPER", size.width / 2, 495);
+  context.fillText("THIS WEEK'S WORD KEEPER", size.width / 2, 495);
   context.fillStyle = "#fff6d4";
   context.font = `800 ${playerName.length > 18 ? 42 : 54}px Avenir Next, Arial, sans-serif`;
   context.fillText(playerName, size.width / 2, 568);
 
   const stats = [
     { label: "GUESSES", value: `${result.guessesUsed}/${game.maxGuesses}`, accent: "#f5d171" },
-    { label: "STREAK", value: `${currentStreak} DAYS`, accent: "#7fcf9b" },
+    { label: "STREAK", value: `${currentStreak} WEEKS`, accent: "#7fcf9b" },
     { label: "HALL RANK", value: rank, accent: "#87cfc6" },
   ];
 
@@ -494,19 +494,22 @@ async function shareCompletedResult() {
   await shareResult(completedShareButton);
 }
 
-function getTimeUntilTomorrow() {
-  const remaining = Math.max(0, getNextIndiaMidnight() - Date.now());
+function getTimeUntilNextWeek() {
+  const remaining = Math.max(0, getNextIndiaWeekStart() - Date.now());
+  const days = Math.floor(remaining / 86_400_000);
   const hours = Math.floor(remaining / 3_600_000);
   const minutes = Math.floor((remaining % 3_600_000) / 60_000);
   const seconds = Math.floor((remaining % 60_000) / 1_000);
 
-  return `${hours}h ${minutes}m ${seconds}s`;
+  return `${days}d ${hours % 24}h ${minutes}m ${seconds}s`;
 }
 
-function getNextIndiaMidnight() {
+function getNextIndiaWeekStart() {
   const parts = getIndiaDateParts();
+  const currentDate = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+  const daysUntilNextMonday = (8 - currentDate.getUTCDay()) % 7 || 7;
 
-  return Date.UTC(parts.year, parts.month - 1, parts.day + 1, 0, 0, 0) - (5.5 * 60 * 60 * 1_000);
+  return Date.UTC(parts.year, parts.month - 1, parts.day + daysUntilNextMonday, 0, 0, 0) - (5.5 * 60 * 60 * 1_000);
 }
 
 function getIndiaDateParts() {
@@ -523,20 +526,24 @@ function getIndiaDateParts() {
   );
 }
 
-function getIndiaDateKey() {
+function getIndiaWeekKey() {
   const { year, month, day } = getIndiaDateParts();
-  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  const currentDate = new Date(Date.UTC(year, month - 1, day));
+  const daysSinceMonday = (currentDate.getUTCDay() + 6) % 7;
+  currentDate.setUTCDate(currentDate.getUTCDate() - daysSinceMonday);
+
+  return currentDate.toISOString().slice(0, 10);
 }
 
 function updatePuzzleCountdown() {
-  const label = `New word in ${getTimeUntilTomorrow()} · resets at midnight IST`;
+  const label = `New word in ${getTimeUntilNextWeek()} · resets Monday midnight IST`;
   puzzleCountdown.textContent = label;
 
   if (resultDialog.open) {
-    nextPuzzle.textContent = `A new word arrives in ${getTimeUntilTomorrow()}.`;
+    nextPuzzle.textContent = `A new word arrives in ${getTimeUntilNextWeek()}.`;
   }
 
-  if (getIndiaDateKey() !== pagePuzzleDate) {
+  if (getIndiaWeekKey() !== pagePuzzleDate) {
     window.location.reload();
   }
 }
@@ -637,7 +644,7 @@ onAuthStateChanged(auth, (user) => {
     guessButton.disabled = true;
     completedShareButton.hidden = true;
     streakCount.textContent = "0";
-    guessRule.textContent = "Sign in to play today’s puzzle.";
+    guessRule.textContent = "Sign in to play this week’s puzzle.";
     setStatus("Sign in with Google to start.");
   }
 });

@@ -31,6 +31,25 @@ function getDateKey(date = new Date()) {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
+function getWeekKey(date = new Date()) {
+  const dateKey = getDateKey(date);
+  const calendarDate = new Date(`${dateKey}T00:00:00Z`);
+  const daysSinceMonday = (calendarDate.getUTCDay() + 6) % 7;
+  calendarDate.setUTCDate(calendarDate.getUTCDate() - daysSinceMonday);
+
+  return calendarDate.toISOString().slice(0, 10);
+}
+
+function getPreviousWeekKey(weekKey) {
+  const weekStart = new Date(`${weekKey}T00:00:00Z`);
+  weekStart.setUTCDate(weekStart.getUTCDate() - 7);
+  return weekStart.toISOString().slice(0, 10);
+}
+
+function isMonday(dateKey) {
+  return new Date(`${dateKey}T00:00:00Z`).getUTCDay() === 1;
+}
+
 function scoreGuess(guess, answer) {
   const result = Array(answer.length).fill("absent");
   const remaining = answer.split("");
@@ -73,16 +92,26 @@ async function isAdmin(database, userId) {
   return admin.exists;
 }
 
-async function getDailyPuzzle(database, date) {
-  if (cachedPuzzle?.date === date) {
-    return cachedPuzzle.data;
+async function getWeeklyPuzzle(database, weekKey) {
+  if (cachedPuzzle?.weekKey === weekKey) {
+    return cachedPuzzle;
   }
 
-  const puzzle = await database.doc(`privatePuzzles/${date}`).get();
-  if (!puzzle.exists) throw new Error("Today’s puzzle has not been published yet.");
+  const weeklyPuzzle = await database.doc(`privatePuzzles/${weekKey}`).get();
+  if (weeklyPuzzle.exists) {
+    cachedPuzzle = { weekKey, puzzleKey: weekKey, data: weeklyPuzzle.data() };
+    return cachedPuzzle;
+  }
 
-  cachedPuzzle = { date, data: puzzle.data() };
-  return cachedPuzzle.data;
+  const today = getDateKey();
+  const legacyPuzzles = await database.collection("privatePuzzles").get();
+  const currentWeekPuzzle = legacyPuzzles.docs
+    .filter((puzzle) => puzzle.id >= weekKey && puzzle.id <= today)
+    .sort((first, second) => second.id.localeCompare(first.id))[0];
+  if (!currentWeekPuzzle) throw new Error("This week’s puzzle has not been published yet.");
+
+  cachedPuzzle = { weekKey, puzzleKey: currentWeekPuzzle.id, data: currentWeekPuzzle.data() };
+  return cachedPuzzle;
 }
 
 async function backfillAllTimeLeaderboard(database) {
@@ -125,19 +154,43 @@ async function backfillAllTimeLeaderboard(database) {
 
 async function startPuzzle(user) {
   const { database } = getFirebaseAdmin();
-  const date = getDateKey();
-  const sessionReference = database.doc(`gameSessions/${date}_${user.uid}`);
-  const [puzzle, userProfile, sessionSnapshot] = await Promise.all([
-    getDailyPuzzle(database, date),
+  const weekKey = getWeekKey();
+  const sessionReference = database.doc(`gameSessions/${weekKey}_${user.uid}`);
+  const [puzzleRecord, userProfile, sessionSnapshot] = await Promise.all([
+    getWeeklyPuzzle(database, weekKey),
     database.doc(`users/${user.uid}`).get(),
     sessionReference.get(),
   ]);
-  const puzzleVersion = getPuzzleVersion(puzzle, date);
+  const puzzle = puzzleRecord.data;
+  const puzzleVersion = getPuzzleVersion(puzzle, puzzleRecord.puzzleKey);
   let session = sessionSnapshot;
+
+  if (!session.exists && puzzleRecord.puzzleKey !== weekKey) {
+    const legacySession = await database.doc(`gameSessions/${puzzleRecord.puzzleKey}_${user.uid}`).get();
+
+    if (legacySession.exists && legacySession.data().puzzleVersion === puzzleVersion) {
+      const migratedSession = {
+        ...legacySession.data(),
+        date: weekKey,
+        updatedAt: Timestamp.now(),
+      };
+      await sessionReference.set(migratedSession);
+
+      if (migratedSession.solved) {
+        const legacyScore = await database.doc(`leaderboards/${puzzleRecord.puzzleKey}/scores/${user.uid}`).get();
+
+        if (legacyScore.exists) {
+          await database.doc(`leaderboards/${weekKey}/scores/${user.uid}`).set(legacyScore.data());
+        }
+      }
+
+      session = { data: () => migratedSession };
+    }
+  }
 
   if (!session.exists || session.data().puzzleVersion !== puzzleVersion) {
     const data = {
-      date,
+      date: weekKey,
       userId: user.uid,
       puzzleVersion,
       guesses: [],
@@ -161,7 +214,7 @@ async function startPuzzle(user) {
   }
 
   return {
-    date,
+    date: weekKey,
     wordLength: puzzle.wordLength,
     maxGuesses: puzzle.wordLength + 1,
     guesses: sessionData.guesses,
@@ -175,26 +228,27 @@ async function startPuzzle(user) {
 
 async function submitGuess(user, guess) {
   const { database } = getFirebaseAdmin();
-  const date = getDateKey();
-  const puzzlePromise = getDailyPuzzle(database, date);
+  const date = getWeekKey();
+  const puzzlePromise = getWeeklyPuzzle(database, date);
   const sessionReference = database.doc(`gameSessions/${date}_${user.uid}`);
   const userReference = database.doc(`users/${user.uid}`);
   const leaderboardReference = database.doc(`leaderboards/${date}/scores/${user.uid}`);
 
   const outcome = await database.runTransaction(async (transaction) => {
-    const [puzzle, sessionSnapshot, userSnapshot] = await Promise.all([
+    const [puzzleRecord, sessionSnapshot, userSnapshot] = await Promise.all([
       puzzlePromise,
       transaction.get(sessionReference),
       transaction.get(userReference),
     ]);
-    if (!sessionSnapshot.exists) throw new Error("Start today’s puzzle first.");
+    const puzzle = puzzleRecord.data;
+    if (!sessionSnapshot.exists) throw new Error("Start this week’s puzzle first.");
 
     const session = sessionSnapshot.data();
-    if (session.puzzleVersion !== getPuzzleVersion(puzzle, date)) {
+    if (session.puzzleVersion !== getPuzzleVersion(puzzle, puzzleRecord.puzzleKey)) {
       throw new Error("A newer puzzle is available. Reload the page to play it.");
     }
     if (!/^[a-z]+$/.test(guess) || guess.length !== puzzle.wordLength) throw new Error(`Enter exactly ${puzzle.wordLength} letters.`);
-    if (session.finished) throw new Error("Today’s puzzle is already complete.");
+    if (session.finished) throw new Error("This week’s puzzle is already complete.");
 
     const guesses = [...session.guesses, { word: guess, result: scoreGuess(guess, puzzle.answer) }];
     const solved = guess === puzzle.answer;
@@ -204,9 +258,7 @@ async function submitGuess(user, guess) {
     if (!solved) return { guesses, finished, solved, guessesUsed: guesses.length, answer: puzzle.answer.toUpperCase(), message: `The word was ${puzzle.answer.toUpperCase()}.` };
 
     const profile = userSnapshot.exists ? userSnapshot.data() : {};
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const currentStreak = profile.lastSolvedDate === getDateKey(yesterday) ? (profile.currentStreak || 0) + 1 : 1;
+    const currentStreak = profile.lastSolvedWeek === getPreviousWeekKey(date) ? (profile.currentStreak || 0) + 1 : 1;
     const bestStreak = Math.max(profile.bestStreak || 0, currentStreak);
     const maxGuesses = puzzle.wordLength + 1;
     const solvePoints = Math.round(100 - ((guesses.length - 1) / (maxGuesses - 1)) * 60);
@@ -217,7 +269,7 @@ async function submitGuess(user, guess) {
     const displayName = user.name || profile.displayName || "Player";
     const completedAt = FieldValue.serverTimestamp();
 
-    transaction.set(userReference, { displayName, currentStreak, bestStreak, totalPoints, lastSolvedDate: date, updatedAt: completedAt }, { merge: true });
+    transaction.set(userReference, { displayName, currentStreak, bestStreak, totalPoints, lastSolvedWeek: date, updatedAt: completedAt }, { merge: true });
     transaction.set(leaderboardReference, { displayName, guessesUsed: guesses.length, durationSeconds, completedAt, currentStreak });
     transaction.set(database.doc(`leaderboards/all-time/scores/${user.uid}`), { displayName, totalPoints, currentStreak, bestStreak, updatedAt: completedAt });
     return { guesses, finished, solved, guessesUsed: guesses.length, currentStreak, bestStreak, pointsEarned, totalPoints, message: `Excellent — solved in ${guesses.length} guesses!` };
@@ -282,7 +334,7 @@ module.exports = async (request, response) => {
     if (action === "start") return response.status(200).json(await startPuzzle(user));
     if (action === "guess" && request.method === "POST") return response.status(200).json(await submitGuess(user, String(request.body.guess || "").toLowerCase()));
     if (action === "leaderboard") {
-      const date = request.query.date || getDateKey();
+      const date = request.query.date || getWeekKey();
       const scores = await database.collection(`leaderboards/${date}/scores`).get();
       const rankedScores = scores.docs
         .map((score) => score.data())
@@ -310,7 +362,7 @@ module.exports = async (request, response) => {
     if (action === "admin-status") return response.status(200).json({ isAdmin: await isAdmin(database, user.uid) });
     if (action === "admin-puzzles") {
       if (!await isAdmin(database, user.uid)) return response.status(403).json({ error: "Admin access is required." });
-      const today = getDateKey();
+      const today = getWeekKey();
       const puzzles = await database.collection("privatePuzzles").get();
       const plannedPuzzles = puzzles.docs
         .map((puzzle) => {
@@ -337,16 +389,32 @@ module.exports = async (request, response) => {
       if (!await isAdmin(database, user.uid)) return response.status(403).json({ error: "Admin access is required." });
       const word = String(request.body.word || "").trim().toLowerCase();
       if (!/^[a-z]{5,}$/.test(word)) return response.status(400).json({ error: "Use a word with at least 5 letters." });
-      const date = String(request.body.date || getDateKey());
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < getDateKey()) {
-        return response.status(400).json({ error: "Choose today or a future date." });
+      const date = String(request.body.date || getWeekKey());
+      const existingPuzzle = await database.doc(`privatePuzzles/${date}`).get();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < getWeekKey()) {
+        return response.status(400).json({ error: "Choose this Monday or a future Monday." });
+      }
+      if (date !== getWeekKey() && !isMonday(date) && !existingPuzzle.exists) {
+        return response.status(400).json({ error: "New weekly puzzles must start on a Monday." });
+      }
+      if (date === getWeekKey() && !existingPuzzle.exists) {
+        try {
+          const activePuzzle = await getWeeklyPuzzle(database, date);
+          if (activePuzzle.puzzleKey !== date) {
+            return response.status(400).json({ error: `This week already uses the puzzle dated ${activePuzzle.puzzleKey}. Edit that card instead.` });
+          }
+        } catch (error) {
+          if (error.message !== "This week’s puzzle has not been published yet.") {
+            throw error;
+          }
+        }
       }
       const version = Date.now();
       await Promise.all([
         database.doc(`privatePuzzles/${date}`).set({ answer: word, wordLength: word.length, version, publishedBy: user.uid, publishedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() }),
         database.doc(`publicPuzzles/${date}`).set({ wordLength: word.length, version, status: "active", publishedAt: FieldValue.serverTimestamp() }),
       ]);
-      if (date === getDateKey()) cachedPuzzle = undefined;
+      if (date >= getWeekKey()) cachedPuzzle = undefined;
       return response.status(200).json({ date, wordLength: word.length });
     }
     return response.status(404).json({ error: "Unknown action." });
