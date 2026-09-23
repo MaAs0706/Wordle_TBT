@@ -155,7 +155,9 @@ async function startPuzzle(user) {
     maxGuesses: puzzle.wordLength + 1,
     guesses: sessionData.guesses,
     finished: sessionData.finished,
+    solved: sessionData.solved || false,
     currentStreak: userProfile.data()?.currentStreak || 0,
+    totalPoints: userProfile.data()?.totalPoints || 0,
   };
 }
 

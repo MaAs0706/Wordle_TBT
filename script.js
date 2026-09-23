@@ -14,6 +14,7 @@ const provider = new GoogleAuthProvider();
 
 const board = document.querySelector("#board");
 const statusMessage = document.querySelector("#game-status");
+const completedShareButton = document.querySelector("#completed-share");
 const guessRule = document.querySelector("#guess-rule");
 const guessForm = document.querySelector("#guess-form");
 const guessInput = document.querySelector("#guess-input");
@@ -106,10 +107,14 @@ async function loadGame() {
       guesses: puzzle.guesses,
       activeGuess: "",
       finished: puzzle.finished,
+      solved: puzzle.solved,
+      currentStreak: puzzle.currentStreak,
+      totalPoints: puzzle.totalPoints,
     };
 
     guessInput.maxLength = game.wordLength;
     guessButton.disabled = game.finished;
+    completedShareButton.hidden = !(game.finished && game.solved);
     streakCount.textContent = puzzle.currentStreak;
     guessRule.textContent = game.finished
       ? "Puzzle complete"
@@ -260,8 +265,12 @@ async function submitGuess() {
 
     game.guesses = result.guesses;
     game.finished = result.finished;
+    game.solved = result.solved;
+    game.currentStreak = result.currentStreak || game.currentStreak;
+    game.totalPoints = result.totalPoints || game.totalPoints;
     game.activeGuess = "";
     guessButton.disabled = game.finished;
+    completedShareButton.hidden = !(game.finished && game.solved);
     guessRule.textContent = game.finished
       ? "Puzzle complete"
       : `Guess ${game.guesses.length + 1} of ${game.maxGuesses}`;
@@ -299,13 +308,19 @@ function createShareResult(result) {
     .map((guess) => guess.result.map((state) => squares[state]).join(""))
     .join("\n");
 
+  const performance = [`Solved in ${result.guessesUsed}/${game.maxGuesses}`];
+  if (result.pointsEarned) performance.push(`${result.pointsEarned} points`);
+
+  const progress = [`⚡ ${result.currentStreak || game.currentStreak || 0}-day streak`];
+  if (result.allTimeRank) progress.push(`Hall rank #${result.allTimeRank}`);
+
   return [
     `WORDLE · ${game.date}`,
     "",
     grid,
     "",
-    `Solved in ${result.guessesUsed}/${game.maxGuesses} · ${result.pointsEarned} points`,
-    `⚡ ${result.currentStreak}-day streak · Hall rank #${result.allTimeRank}`,
+    performance.join(" · "),
+    progress.join(" · "),
   ].join("\n");
 }
 
@@ -330,6 +345,17 @@ async function shareResult() {
       window.setTimeout(() => { shareResultButton.textContent = "Share result"; }, 2_200);
     }
   }
+}
+
+async function shareCompletedResult() {
+  if (!game?.solved) return;
+
+  shareResultButton.dataset.result = JSON.stringify({
+    guesses: game.guesses,
+    guessesUsed: game.guesses.length,
+    currentStreak: game.currentStreak,
+  });
+  await shareResult();
 }
 
 function getTimeUntilTomorrow() {
@@ -453,6 +479,7 @@ googleSignInButton.addEventListener("click", signIn);
 signOutButton.addEventListener("click", () => signOut(auth));
 closeResultButton.addEventListener("click", () => resultDialog.close());
 shareResultButton.addEventListener("click", shareResult);
+completedShareButton.addEventListener("click", shareCompletedResult);
 
 onAuthStateChanged(auth, (user) => {
   setSignedInView(user);
