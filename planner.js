@@ -38,8 +38,8 @@ function getIndiaWeekKey() {
   );
 
   const calendarDate = new Date(`${values.year}-${values.month}-${values.day}T00:00:00Z`);
-  const daysSinceMonday = (calendarDate.getUTCDay() + 6) % 7;
-  calendarDate.setUTCDate(calendarDate.getUTCDate() - daysSinceMonday);
+  const daysSinceThursday = (calendarDate.getUTCDay() + 3) % 7;
+  calendarDate.setUTCDate(calendarDate.getUTCDate() - daysSinceThursday);
 
   return calendarDate.toISOString().slice(0, 10);
 }

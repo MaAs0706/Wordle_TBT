@@ -3,6 +3,7 @@ const { getAuth } = require("firebase-admin/auth");
 const { FieldValue, getFirestore, Timestamp } = require("firebase-admin/firestore");
 
 let cachedPuzzle;
+const WEEKLY_PUZZLE_START = "2026-09-24";
 
 function getFirebaseAdmin() {
   if (!getApps().length) {
@@ -34,8 +35,8 @@ function getDateKey(date = new Date()) {
 function getWeekKey(date = new Date()) {
   const dateKey = getDateKey(date);
   const calendarDate = new Date(`${dateKey}T00:00:00Z`);
-  const daysSinceMonday = (calendarDate.getUTCDay() + 6) % 7;
-  calendarDate.setUTCDate(calendarDate.getUTCDate() - daysSinceMonday);
+  const daysSinceThursday = (calendarDate.getUTCDay() + 3) % 7;
+  calendarDate.setUTCDate(calendarDate.getUTCDate() - daysSinceThursday);
 
   return calendarDate.toISOString().slice(0, 10);
 }
@@ -46,8 +47,8 @@ function getPreviousWeekKey(weekKey) {
   return weekStart.toISOString().slice(0, 10);
 }
 
-function isMonday(dateKey) {
-  return new Date(`${dateKey}T00:00:00Z`).getUTCDay() === 1;
+function isThursday(dateKey) {
+  return new Date(`${dateKey}T00:00:00Z`).getUTCDay() === 4;
 }
 
 function scoreGuess(guess, answer) {
@@ -104,6 +105,10 @@ async function getWeeklyPuzzle(database, weekKey) {
   }
 
   const today = getDateKey();
+  if (today >= WEEKLY_PUZZLE_START) {
+    throw new Error("This week’s puzzle has not been published yet.");
+  }
+
   const legacyPuzzles = await database.collection("privatePuzzles").get();
   const currentWeekPuzzle = legacyPuzzles.docs
     .filter((puzzle) => puzzle.id >= weekKey && puzzle.id <= today)
@@ -258,7 +263,10 @@ async function submitGuess(user, guess) {
     if (!solved) return { guesses, finished, solved, guessesUsed: guesses.length, answer: puzzle.answer.toUpperCase(), message: `The word was ${puzzle.answer.toUpperCase()}.` };
 
     const profile = userSnapshot.exists ? userSnapshot.data() : {};
-    const currentStreak = profile.lastSolvedWeek === getPreviousWeekKey(date) ? (profile.currentStreak || 0) + 1 : 1;
+    const previousWeekKey = getPreviousWeekKey(date);
+    const solvedPreviousWeek = profile.lastSolvedWeek
+      && getWeekKey(new Date(`${profile.lastSolvedWeek}T00:00:00Z`)) === previousWeekKey;
+    const currentStreak = solvedPreviousWeek ? (profile.currentStreak || 0) + 1 : 1;
     const bestStreak = Math.max(profile.bestStreak || 0, currentStreak);
     const maxGuesses = puzzle.wordLength + 1;
     const solvePoints = Math.round(100 - ((guesses.length - 1) / (maxGuesses - 1)) * 60);
@@ -392,10 +400,10 @@ module.exports = async (request, response) => {
       const date = String(request.body.date || getWeekKey());
       const existingPuzzle = await database.doc(`privatePuzzles/${date}`).get();
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < getWeekKey()) {
-        return response.status(400).json({ error: "Choose this Monday or a future Monday." });
+        return response.status(400).json({ error: "Choose this Thursday or a future Thursday." });
       }
-      if (date !== getWeekKey() && !isMonday(date) && !existingPuzzle.exists) {
-        return response.status(400).json({ error: "New weekly puzzles must start on a Monday." });
+      if (date !== getWeekKey() && !isThursday(date) && !existingPuzzle.exists) {
+        return response.status(400).json({ error: "New weekly puzzles must start on a Thursday." });
       }
       if (date === getWeekKey() && !existingPuzzle.exists) {
         try {

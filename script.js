@@ -507,9 +507,9 @@ function getTimeUntilNextWeek() {
 function getNextIndiaWeekStart() {
   const parts = getIndiaDateParts();
   const currentDate = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
-  const daysUntilNextMonday = (8 - currentDate.getUTCDay()) % 7 || 7;
+  const daysUntilNextThursday = (11 - currentDate.getUTCDay()) % 7 || 7;
 
-  return Date.UTC(parts.year, parts.month - 1, parts.day + daysUntilNextMonday, 0, 0, 0) - (5.5 * 60 * 60 * 1_000);
+  return Date.UTC(parts.year, parts.month - 1, parts.day + daysUntilNextThursday, 0, 0, 0) - (5.5 * 60 * 60 * 1_000);
 }
 
 function getIndiaDateParts() {
@@ -529,14 +529,14 @@ function getIndiaDateParts() {
 function getIndiaWeekKey() {
   const { year, month, day } = getIndiaDateParts();
   const currentDate = new Date(Date.UTC(year, month - 1, day));
-  const daysSinceMonday = (currentDate.getUTCDay() + 6) % 7;
-  currentDate.setUTCDate(currentDate.getUTCDate() - daysSinceMonday);
+  const daysSinceThursday = (currentDate.getUTCDay() + 3) % 7;
+  currentDate.setUTCDate(currentDate.getUTCDate() - daysSinceThursday);
 
   return currentDate.toISOString().slice(0, 10);
 }
 
 function updatePuzzleCountdown() {
-  const label = `New word in ${getTimeUntilNextWeek()} · resets Monday midnight IST`;
+  const label = `New word in ${getTimeUntilNextWeek()} · resets Thursday midnight IST`;
   puzzleCountdown.textContent = label;
 
   if (resultDialog.open) {
