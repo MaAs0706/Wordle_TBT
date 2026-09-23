@@ -864,7 +864,8 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 }
 
 .achievement:hover .achievement-tooltip,
-.achievement:focus-visible .achievement-tooltip {
+.achievement:focus-visible .achievement-tooltip,
+.achievement.is-showing-tooltip .achievement-tooltip {
   opacity: 1;
   transform: translate(-50%, 0);
 }

@@ -106,6 +106,8 @@ function renderAchievements(achievements = {}) {
     item.className = `achievement ${unlocked ? "unlocked" : "locked"}`;
     item.style.setProperty("--achievement-delay", `${index * 80}ms`);
     item.tabIndex = 0;
+    item.setAttribute("role", "button");
+    item.setAttribute("aria-expanded", "false");
     item.title = `${unlocked ? "Unlocked" : "Locked"}: ${achievement.description}`;
 
     const art = document.createElement("span");
@@ -122,7 +124,29 @@ function renderAchievements(achievements = {}) {
     const tooltip = document.createElement("span");
     tooltip.className = "achievement-tooltip";
     tooltip.setAttribute("role", "tooltip");
+    tooltip.id = `achievement-tooltip-${achievement.id}`;
     tooltip.textContent = achievement.description;
+    item.setAttribute("aria-describedby", tooltip.id);
+
+    const toggleTooltip = () => {
+      const shouldOpen = !item.classList.contains("is-showing-tooltip");
+
+      achievementGrid.querySelectorAll(".achievement.is-showing-tooltip").forEach((badge) => {
+        badge.classList.remove("is-showing-tooltip");
+        badge.setAttribute("aria-expanded", "false");
+      });
+
+      item.classList.toggle("is-showing-tooltip", shouldOpen);
+      item.setAttribute("aria-expanded", String(shouldOpen));
+    };
+
+    item.addEventListener("click", toggleTooltip);
+    item.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        toggleTooltip();
+      }
+    });
 
     copy.append(name, description);
 
