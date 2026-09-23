@@ -171,6 +171,7 @@ async function loadPuzzleVault() {
 async function savePuzzle(event) {
   event.preventDefault();
   const word = plannerWord.value.trim().toLowerCase();
+  const date = plannerDate.value;
 
   if (!/^[a-z]{5,}$/.test(word)) {
     plannerMessage.textContent = "Use at least 5 letters, with no spaces or symbols.";
@@ -179,11 +180,11 @@ async function savePuzzle(event) {
   }
 
   try {
-    const puzzle = await callApi("publish", {
+    await callApi("publish", {
       method: "POST",
-      body: { date: plannerDate.value, word },
+      body: { date, word },
     });
-    plannerMessage.textContent = `Saved ${puzzle.word.toUpperCase()} for ${formatDate(puzzle.date)}.`;
+    plannerMessage.textContent = `Saved ${word.toUpperCase()} for ${formatDate(date)}.`;
     plannerMessage.classList.remove("error");
     plannerDate.value = getNextIndiaWeekKey();
     plannerWord.value = "";
