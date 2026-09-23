@@ -149,6 +149,17 @@ async function startPuzzle(user) {
   }
 
   const sessionData = session.data();
+  let allTimeRank = null;
+
+  if (sessionData.solved) {
+    const scores = await database.collection("leaderboards/all-time/scores").get();
+    const rankedScores = scores.docs
+      .map((score) => ({ userId: score.id, ...score.data() }))
+      .sort((first, second) => second.totalPoints - first.totalPoints || second.bestStreak - first.bestStreak);
+    const rankIndex = rankedScores.findIndex((score) => score.userId === user.uid);
+    allTimeRank = rankIndex === -1 ? null : rankIndex + 1;
+  }
+
   return {
     date,
     wordLength: puzzle.wordLength,
@@ -158,6 +169,7 @@ async function startPuzzle(user) {
     solved: sessionData.solved || false,
     currentStreak: userProfile.data()?.currentStreak || 0,
     totalPoints: userProfile.data()?.totalPoints || 0,
+    allTimeRank,
   };
 }
 

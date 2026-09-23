@@ -110,6 +110,7 @@ async function loadGame() {
       solved: puzzle.solved,
       currentStreak: puzzle.currentStreak,
       totalPoints: puzzle.totalPoints,
+      allTimeRank: puzzle.allTimeRank,
     };
 
     guessInput.maxLength = game.wordLength;
@@ -268,6 +269,7 @@ async function submitGuess() {
     game.solved = result.solved;
     game.currentStreak = result.currentStreak || game.currentStreak;
     game.totalPoints = result.totalPoints || game.totalPoints;
+    game.allTimeRank = result.allTimeRank || game.allTimeRank;
     game.activeGuess = "";
     guessButton.disabled = game.finished;
     completedShareButton.hidden = !(game.finished && game.solved);
@@ -302,28 +304,6 @@ function showResult(result) {
   window.setTimeout(() => resultDialog.showModal(), 650);
 }
 
-function createShareResult(result) {
-  const squares = { correct: "🟩", present: "🟨", absent: "⬛" };
-  const grid = result.guesses
-    .map((guess) => guess.result.map((state) => squares[state]).join(""))
-    .join("\n");
-
-  const performance = [`Solved in ${result.guessesUsed}/${game.maxGuesses}`];
-  if (result.pointsEarned) performance.push(`${result.pointsEarned} points`);
-
-  const progress = [`⚡ ${result.currentStreak || game.currentStreak || 0}-day streak`];
-  if (result.allTimeRank) progress.push(`Hall rank #${result.allTimeRank}`);
-
-  return [
-    `WORDLE · ${game.date}`,
-    "",
-    grid,
-    "",
-    performance.join(" · "),
-    progress.join(" · "),
-  ].join("\n");
-}
-
 function drawRoundedRectangle(context, x, y, width, height, radius) {
   context.beginPath();
   context.roundRect(x, y, width, height, radius);
@@ -342,82 +322,98 @@ function canvasToBlob(canvas) {
 async function createShareCard(result) {
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
-  const colors = { correct: "#538d4e", present: "#b59f3b", absent: "#3a3a3c" };
-  const gridWidth = 760;
-  const cellGap = 16;
-  const cellSize = Math.floor((gridWidth - ((game.wordLength - 1) * cellGap)) / game.wordLength);
-  const gridStartY = 450;
-  const gridHeight = result.guesses.length * cellSize + Math.max(0, result.guesses.length - 1) * cellGap;
-  const size = { width: 1200, height: Math.max(1500, gridStartY + gridHeight + 390) };
-  const gridStartX = Math.round((size.width - gridWidth) / 2);
+  const size = { width: 1200, height: 1500 };
+  const playerName = (auth.currentUser?.displayName || "Word Keeper").toUpperCase();
+  const currentStreak = result.currentStreak || game.currentStreak || 0;
+  const rank = result.allTimeRank ? `#${result.allTimeRank}` : "—";
 
   canvas.width = size.width;
   canvas.height = size.height;
 
   const background = context.createLinearGradient(0, 0, size.width, size.height);
-  background.addColorStop(0, "#062f38");
-  background.addColorStop(.58, "#0d5055");
-  background.addColorStop(1, "#082833");
+  background.addColorStop(0, "#031f2b");
+  background.addColorStop(.54, "#0b5055");
+  background.addColorStop(1, "#082535");
   context.fillStyle = background;
   context.fillRect(0, 0, size.width, size.height);
 
-  const glow = context.createRadialGradient(920, 150, 30, 920, 150, 600);
-  glow.addColorStop(0, "rgb(251 210 108 / 38%)");
-  glow.addColorStop(1, "rgb(251 210 108 / 0%)");
+  const glow = context.createRadialGradient(900, 190, 40, 900, 190, 650);
+  glow.addColorStop(0, "rgba(251, 210, 108, .42)");
+  glow.addColorStop(1, "rgba(251, 210, 108, 0)");
   context.fillStyle = glow;
   context.fillRect(0, 0, size.width, size.height);
 
-  context.fillStyle = "rgb(5 29 37 / 78%)";
-  drawRoundedRectangle(context, 70, 70, 1060, size.height - 140, 48);
+  for (let index = 0; index < 34; index += 1) {
+    const x = 90 + ((index * 137) % 1020);
+    const y = 90 + ((index * 251) % 1290);
+    context.fillStyle = index % 3 ? "rgba(250, 219, 123, .28)" : "rgba(157, 239, 224, .18)";
+    context.beginPath();
+    context.arc(x, y, index % 4 === 0 ? 4 : 2, 0, Math.PI * 2);
+    context.fill();
+  }
+
+  context.fillStyle = "rgba(4, 27, 39, .86)";
+  drawRoundedRectangle(context, 70, 70, 1060, 1360, 54);
   context.strokeStyle = "#e7c662";
-  context.lineWidth = 4;
-  context.strokeRect(92, 92, 1016, size.height - 184);
+  context.lineWidth = 5;
+  context.strokeRect(100, 100, 1000, 1300);
 
   context.fillStyle = "#f5d171";
-  context.font = "700 30px Avenir Next, Arial, sans-serif";
+  context.font = "800 34px Avenir Next, Arial, sans-serif";
   context.textAlign = "center";
-  context.fillText("WORD KEEPER'S RESULT", size.width / 2, 180);
+  context.fillText("WORDLE TBT", size.width / 2, 175);
+  context.fillStyle = "#d1e6e1";
+  context.font = "700 25px Avenir Next, Arial, sans-serif";
+  context.fillText("WORD KEEPER'S RESULT", size.width / 2, 230);
   context.fillStyle = "#ffffff";
-  context.font = "800 78px Avenir Next, Arial, sans-serif";
-  context.fillText("WORDLE", size.width / 2, 275);
+  context.font = "800 72px Avenir Next, Arial, sans-serif";
+  context.fillText("WORDLE", size.width / 2, 320);
   context.fillStyle = "#bdd8d2";
-  context.font = "600 31px Avenir Next, Arial, sans-serif";
-  context.fillText(game.date, size.width / 2, 325);
+  context.font = "600 28px Avenir Next, Arial, sans-serif";
+  context.fillText(game.date, size.width / 2, 370);
 
-  result.guesses.forEach((guess, rowIndex) => {
-    guess.result.forEach((state, columnIndex) => {
-      const x = gridStartX + columnIndex * (cellSize + cellGap);
-      const y = gridStartY + rowIndex * (cellSize + cellGap);
-      context.fillStyle = colors[state];
-      drawRoundedRectangle(context, x, y, cellSize, cellSize, 14);
-      context.strokeStyle = "rgb(255 255 255 / 24%)";
-      context.lineWidth = 3;
-      context.strokeRect(x + 2, y + 2, cellSize - 4, cellSize - 4);
-    });
+  context.fillStyle = "rgba(238, 207, 116, .13)";
+  drawRoundedRectangle(context, 190, 445, 820, 175, 24);
+  context.strokeStyle = "rgba(237, 203, 105, .7)";
+  context.lineWidth = 2;
+  context.strokeRect(192, 447, 816, 171);
+  context.fillStyle = "#f5d171";
+  context.font = "700 23px Avenir Next, Arial, sans-serif";
+  context.fillText("TODAY'S WORD KEEPER", size.width / 2, 495);
+  context.fillStyle = "#fff6d4";
+  context.font = `800 ${playerName.length > 18 ? 42 : 54}px Avenir Next, Arial, sans-serif`;
+  context.fillText(playerName, size.width / 2, 568);
+
+  const stats = [
+    { label: "GUESSES", value: `${result.guessesUsed}/${game.maxGuesses}`, accent: "#f5d171" },
+    { label: "STREAK", value: `${currentStreak} DAYS`, accent: "#7fcf9b" },
+    { label: "HALL RANK", value: rank, accent: "#87cfc6" },
+  ];
+
+  stats.forEach((stat, index) => {
+    const y = 705 + index * 190;
+    context.fillStyle = "rgba(3, 20, 31, .68)";
+    drawRoundedRectangle(context, 180, y, 840, 145, 18);
+    context.strokeStyle = "rgba(210, 234, 225, .24)";
+    context.lineWidth = 2;
+    context.strokeRect(182, y + 2, 836, 141);
+    context.fillStyle = "#c8dfda";
+    context.font = "700 24px Avenir Next, Arial, sans-serif";
+    context.textAlign = "left";
+    context.fillText(stat.label, 235, y + 55);
+    context.fillStyle = stat.accent;
+    context.font = "800 52px Avenir Next, Arial, sans-serif";
+    context.textAlign = "right";
+    context.fillText(stat.value, 965, y + 96);
   });
 
-  const gridBottom = gridStartY + gridHeight;
-  context.strokeStyle = "rgb(233 202 108 / 42%)";
-  context.lineWidth = 2;
-  context.beginPath();
-  context.moveTo(185, gridBottom + 84);
-  context.lineTo(1015, gridBottom + 84);
-  context.stroke();
-
-  context.fillStyle = "#fff3c3";
-  context.font = "700 47px Avenir Next, Arial, sans-serif";
-  context.fillText(`Solved in ${result.guessesUsed}/${game.maxGuesses}`, size.width / 2, gridBottom + 165);
-  context.fillStyle = "#f5d171";
-  context.font = "700 34px Avenir Next, Arial, sans-serif";
-  const points = result.pointsEarned ? ` · ${result.pointsEarned} points` : "";
-  context.fillText(`⚡ ${result.currentStreak || game.currentStreak || 0}-day streak${points}`, size.width / 2, gridBottom + 224);
-  context.fillStyle = "#b8d4ce";
-  context.font = "600 28px Avenir Next, Arial, sans-serif";
-  context.fillText(result.allTimeRank ? `Hall of Fame rank #${result.allTimeRank}` : "One word. One challenge.", size.width / 2, gridBottom + 280);
-
+  context.textAlign = "center";
   context.fillStyle = "#e7c662";
-  context.font = "700 25px Avenir Next, Arial, sans-serif";
-  context.fillText("WORDLE TBT", size.width / 2, size.height - 70);
+  context.font = "800 29px Avenir Next, Arial, sans-serif";
+  context.fillText("WORDLE TBT", size.width / 2, 1340);
+  context.fillStyle = "#b8d4ce";
+  context.font = "600 22px Avenir Next, Arial, sans-serif";
+  context.fillText("ONE WORD. ONE CHALLENGE.", size.width / 2, 1380);
   return canvasToBlob(canvas);
 }
 
@@ -433,7 +429,6 @@ async function shareResult(button = shareResultButton) {
   const result = JSON.parse(shareResultButton.dataset.result || "null");
   if (!result) return;
 
-  const shareText = createShareResult(result);
   const previousLabel = button.textContent;
   button.disabled = true;
   button.textContent = "Creating image card…";
@@ -443,21 +438,12 @@ async function shareResult(button = shareResultButton) {
     const cardFile = new File([cardBlob], `wordle-${game.date}-result.png`, { type: "image/png" });
 
     if (navigator.canShare?.({ files: [cardFile] })) {
-      await navigator.share({
-        files: [cardFile],
-        title: "My Wordle result",
-        text: shareText,
-      });
+      await navigator.share({ files: [cardFile] });
       return;
     }
 
     downloadShareCard(cardBlob);
-    try {
-      await navigator.clipboard.writeText(shareText);
-      button.textContent = "Image downloaded · result copied";
-    } catch {
-      button.textContent = "Image downloaded";
-    }
+    button.textContent = "Image downloaded";
     window.setTimeout(() => { button.textContent = previousLabel; }, 2_500);
   } catch (error) {
     if (error.name !== "AbortError") {
@@ -476,6 +462,7 @@ async function shareCompletedResult() {
     guesses: game.guesses,
     guessesUsed: game.guesses.length,
     currentStreak: game.currentStreak,
+    allTimeRank: game.allTimeRank,
   });
   await shareResult(completedShareButton);
 }
