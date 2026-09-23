@@ -60,22 +60,33 @@
       <h2 id="account-name"></h2>
       <p id="account-copy" class="dialog-copy"></p>
       <a class="profile-link" href="profile.html">View player card <span aria-hidden="true">↗</span></a>
-      <button id="open-admin" class="text-button" type="button" hidden>Set today’s word</button>
+      <button id="open-admin" class="text-button" type="button" hidden>Plan daily words</button>
       <button id="sign-out-button" class="text-button" type="button">Sign out</button>
     </section>
   </dialog>
 
   <dialog id="admin-dialog" class="dialog">
     <button id="close-admin" class="close-button" type="button" aria-label="Close">×</button>
-    <p class="eyebrow">ADMIN AREA</p>
-    <h2>Set today’s word</h2>
-    <p class="dialog-copy">Use letters only. The word must be at least 5 letters long.</p>
+    <p class="eyebrow">PUZZLE PLANNER</p>
+    <h2>Plan the daily words</h2>
+    <p class="dialog-copy">Schedule a word for today or any upcoming day. Only you can see the word itself.</p>
     <form id="admin-word-form" class="stack-form">
-      <label for="daily-word">Today's word</label>
+      <label for="daily-date">Puzzle date</label>
+      <input id="daily-date" type="date" required>
+      <label for="daily-word">Puzzle word</label>
       <input id="daily-word" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
       <p id="admin-message" class="form-message" aria-live="polite"></p>
-      <button type="submit">Publish word</button>
+      <button type="submit">Save puzzle</button>
     </form>
+    <section class="scheduled-puzzles" aria-labelledby="scheduled-puzzles-title">
+      <div class="section-heading">
+        <p class="eyebrow">UP NEXT</p>
+        <h3 id="scheduled-puzzles-title">Scheduled puzzles</h3>
+      </div>
+      <ul id="scheduled-puzzles-list" class="scheduled-puzzles-list">
+        <li>Loading upcoming puzzles…</li>
+      </ul>
+    </section>
   </dialog>
 
   <dialog id="result-dialog" class="dialog result-dialog">

@@ -294,18 +294,34 @@ module.exports = async (request, response) => {
     }
     if (action === "player-stats") return response.status(200).json(await getPlayerStats(user));
     if (action === "admin-status") return response.status(200).json({ isAdmin: await isAdmin(database, user.uid) });
+    if (action === "admin-puzzles") {
+      if (!await isAdmin(database, user.uid)) return response.status(403).json({ error: "Admin access is required." });
+      const today = getDateKey();
+      const puzzles = await database.collection("publicPuzzles").get();
+      const upcomingPuzzles = puzzles.docs
+        .map((puzzle) => ({ date: puzzle.id, ...puzzle.data() }))
+        .filter((puzzle) => puzzle.date >= today)
+        .sort((first, second) => first.date.localeCompare(second.date))
+        .slice(0, 14)
+        .map(({ date, wordLength, status }) => ({ date, wordLength, status }));
+
+      return response.status(200).json(upcomingPuzzles);
+    }
     if (action === "publish" && request.method === "POST") {
       if (!await isAdmin(database, user.uid)) return response.status(403).json({ error: "Admin access is required." });
       const word = String(request.body.word || "").trim().toLowerCase();
       if (!/^[a-z]{5,}$/.test(word)) return response.status(400).json({ error: "Use a word with at least 5 letters." });
-      const date = getDateKey();
+      const date = String(request.body.date || getDateKey());
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < getDateKey()) {
+        return response.status(400).json({ error: "Choose today or a future date." });
+      }
       const version = Date.now();
       await Promise.all([
         database.doc(`privatePuzzles/${date}`).set({ answer: word, wordLength: word.length, version, publishedBy: user.uid, publishedAt: FieldValue.serverTimestamp() }),
         database.doc(`publicPuzzles/${date}`).set({ wordLength: word.length, version, status: "active", publishedAt: FieldValue.serverTimestamp() }),
       ]);
-      cachedPuzzle = undefined;
-      return response.status(200).json({ wordLength: word.length });
+      if (date === getDateKey()) cachedPuzzle = undefined;
+      return response.status(200).json({ date, wordLength: word.length });
     }
     return response.status(404).json({ error: "Unknown action." });
   } catch (error) {
