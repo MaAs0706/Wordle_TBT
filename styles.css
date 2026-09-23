@@ -94,7 +94,7 @@ button { cursor: pointer; }
 
 .rules-button {
   position: absolute;
-  right: 162px;
+  left: 112px;
   display: grid;
   width: 28px;
   height: 28px;
@@ -106,6 +106,14 @@ button { cursor: pointer; }
   color: #e8f3ef;
   font-size: .88rem;
   font-weight: bold;
+  transition: transform 130ms ease, background 130ms ease, border-color 130ms ease;
+}
+
+.rules-button:hover {
+  border-color: #f2cf72;
+  background: rgb(70 58 29 / 74%);
+  color: #fff1b0;
+  transform: translateY(-1px);
 }
 
 .streak-badge {
