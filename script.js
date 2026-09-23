@@ -23,6 +23,7 @@ const keyboard = document.querySelector("#keyboard");
 const streakCount = document.querySelector("#streak-count");
 const leaderboardList = document.querySelector("#leaderboard-list");
 const accountButton = document.querySelector("#account-button");
+const rulesButton = document.querySelector("#rules-button");
 const accountDialog = document.querySelector("#account-dialog");
 const closeAccountButton = document.querySelector("#close-account");
 const signedOutPanel = document.querySelector("#signed-out-panel");
@@ -39,6 +40,8 @@ const resultCopy = document.querySelector("#result-copy");
 const resultStreak = document.querySelector("#result-streak");
 const nextPuzzle = document.querySelector("#next-puzzle");
 const closeResultButton = document.querySelector("#close-result");
+const rulesDialog = document.querySelector("#rules-dialog");
+const rulesContinueButton = document.querySelector("#rules-continue");
 const shareResultButton = document.querySelector("#share-result");
 const puzzleCountdown = document.querySelector("#puzzle-countdown");
 
@@ -46,6 +49,7 @@ let game;
 let isAdmin = false;
 let isSubmitting = false;
 let nextPuzzleTimer;
+let shouldStartGameAfterRules = false;
 const pagePuzzleDate = getIndiaDateKey();
 async function callApi(action, options = {}) {
   const token = await auth.currentUser.getIdToken();
@@ -78,6 +82,29 @@ function setSignedInView(user) {
   }
 
   openAdminButton.hidden = !isAdmin;
+}
+
+function getRulesStorageKey(user) {
+  return `wordle-rules-seen:${user.uid}`;
+}
+
+function openRules(showBeforeGame = false) {
+  shouldStartGameAfterRules = showBeforeGame;
+  rulesContinueButton.textContent = showBeforeGame ? "Let’s play" : "Back to game";
+  rulesDialog.showModal();
+}
+
+function closeRules() {
+  if (auth.currentUser) {
+    localStorage.setItem(getRulesStorageKey(auth.currentUser), "true");
+  }
+
+  rulesDialog.close();
+
+  if (shouldStartGameAfterRules) {
+    shouldStartGameAfterRules = false;
+    loadGame();
+  }
 }
 
 async function updateAdminStatus() {
@@ -567,7 +594,7 @@ guessInput.addEventListener("input", () => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (accountDialog.open || resultDialog.open) return;
+  if (accountDialog.open || resultDialog.open || rulesDialog.open) return;
 
   if (/^[a-zA-Z]$/.test(event.key)) {
     event.preventDefault();
@@ -583,23 +610,32 @@ document.addEventListener("keydown", (event) => {
 
 board.addEventListener("click", () => guessInput.focus());
 accountButton.addEventListener("click", () => accountDialog.showModal());
+rulesButton.addEventListener("click", () => openRules(false));
 closeAccountButton.addEventListener("click", () => accountDialog.close());
 googleSignInButton.addEventListener("click", signIn);
 signOutButton.addEventListener("click", () => signOut(auth));
 closeResultButton.addEventListener("click", () => resultDialog.close());
 shareResultButton.addEventListener("click", () => shareResult());
 completedShareButton.addEventListener("click", shareCompletedResult);
+rulesContinueButton.addEventListener("click", closeRules);
+rulesDialog.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  closeRules();
+});
 
 onAuthStateChanged(auth, (user) => {
   setSignedInView(user);
   if (user) {
     updateAdminStatus();
-    loadGame();
+    const hasSeenRules = localStorage.getItem(getRulesStorageKey(user)) === "true";
+    if (hasSeenRules) loadGame();
+    else openRules(true);
   } else {
     game = undefined;
     isAdmin = false;
     board.replaceChildren();
     guessButton.disabled = true;
+    completedShareButton.hidden = true;
     streakCount.textContent = "0";
     guessRule.textContent = "Sign in to play today’s puzzle.";
     setStatus("Sign in with Google to start.");
