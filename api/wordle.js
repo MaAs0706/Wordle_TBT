@@ -258,9 +258,15 @@ async function submitGuess(user, guess) {
     const guesses = [...session.guesses, { word: guess, result: scoreGuess(guess, puzzle.answer) }];
     const solved = guess === puzzle.answer;
     const finished = solved || guesses.length >= puzzle.wordLength + 1;
-    transaction.update(sessionReference, { guesses, solved, finished, updatedAt: Timestamp.now() });
-    if (!finished) return { guesses, finished, solved, message: `${puzzle.wordLength + 1 - guesses.length} guesses left.` };
-    if (!solved) return { guesses, finished, solved, guessesUsed: guesses.length, answer: puzzle.answer.toUpperCase(), message: `The word was ${puzzle.answer.toUpperCase()}.` };
+    if (!finished) {
+      transaction.update(sessionReference, { guesses, solved, finished, updatedAt: Timestamp.now() });
+      return { guesses, finished, solved, message: `${puzzle.wordLength + 1 - guesses.length} guesses left.` };
+    }
+    const completedAt = FieldValue.serverTimestamp();
+    if (!solved) {
+      transaction.update(sessionReference, { guesses, solved, finished, updatedAt: Timestamp.now(), completedAt });
+      return { guesses, finished, solved, guessesUsed: guesses.length, answer: puzzle.answer.toUpperCase(), message: `The word was ${puzzle.answer.toUpperCase()}.` };
+    }
 
     const profile = userSnapshot.exists ? userSnapshot.data() : {};
     const previousWeekKey = getPreviousWeekKey(date);
@@ -275,8 +281,8 @@ async function submitGuess(user, guess) {
     const totalPoints = (profile.totalPoints || 0) + pointsEarned;
     const durationSeconds = Math.max(0, Timestamp.now().seconds - session.startedAt.seconds);
     const displayName = user.name || profile.displayName || "Player";
-    const completedAt = FieldValue.serverTimestamp();
 
+    transaction.update(sessionReference, { guesses, solved, finished, updatedAt: Timestamp.now(), completedAt, currentStreak, pointsEarned });
     transaction.set(userReference, { displayName, currentStreak, bestStreak, totalPoints, lastSolvedWeek: date, updatedAt: completedAt }, { merge: true });
     transaction.set(leaderboardReference, { displayName, guessesUsed: guesses.length, durationSeconds, completedAt, currentStreak });
     transaction.set(database.doc(`leaderboards/all-time/scores/${user.uid}`), { displayName, totalPoints, currentStreak, bestStreak, updatedAt: completedAt });
@@ -292,6 +298,43 @@ async function submitGuess(user, guess) {
 
   outcome.allTimeRank = rankedScores.findIndex((score) => score.userId === user.uid) + 1;
   return outcome;
+}
+
+async function getPlayerHistory(user) {
+  const { database } = getFirebaseAdmin();
+  const sessionsSnapshot = await database.collection("gameSessions").where("userId", "==", user.uid).get();
+  const sessionsByWeek = new Map();
+
+  sessionsSnapshot.docs
+    .map((session) => session.data())
+    .filter((session) => session.finished && /^\d{4}-\d{2}-\d{2}$/.test(session.date))
+    .forEach((session) => {
+      const weekKey = getWeekKey(new Date(`${session.date}T00:00:00Z`));
+      const knownSession = sessionsByWeek.get(weekKey);
+      const sessionUpdatedAt = session.updatedAt?.seconds || session.completedAt?.seconds || 0;
+      const knownUpdatedAt = knownSession?.updatedAt?.seconds || knownSession?.completedAt?.seconds || 0;
+
+      if (!knownSession || sessionUpdatedAt > knownUpdatedAt) {
+        sessionsByWeek.set(weekKey, session);
+      }
+    });
+
+  return [...sessionsByWeek.entries()]
+    .sort(([firstWeek], [secondWeek]) => secondWeek.localeCompare(firstWeek))
+    .map(([weekKey, session]) => {
+      const guesses = Array.isArray(session.guesses) ? session.guesses : [];
+      const wordLength = guesses[0]?.word?.length || Math.max(5, guesses.length - 1);
+
+      return {
+        weekKey,
+        solved: Boolean(session.solved),
+        guessesUsed: guesses.length,
+        maxGuesses: wordLength + 1,
+        tileRows: guesses.map((guess) => guess.result || []),
+        pointsEarned: session.pointsEarned || null,
+        currentStreak: session.currentStreak || null,
+      };
+    });
 }
 
 async function getPlayerStats(user) {
@@ -405,6 +448,7 @@ module.exports = async (request, response) => {
       return response.status(200).json(scores.docs.map((score) => score.data()).sort((a, b) => b.totalPoints - a.totalPoints || b.bestStreak - a.bestStreak).slice(0, 50));
     }
     if (action === "player-stats") return response.status(200).json(await getPlayerStats(user));
+    if (action === "player-history") return response.status(200).json(await getPlayerHistory(user));
     if (action === "admin-status") return response.status(200).json({ isAdmin: await isAdmin(database, user.uid) });
     if (action === "admin-puzzles") {
       if (!await isAdmin(database, user.uid)) return response.status(403).json({ error: "Admin access is required." });

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Your private Wordle TBT weekly puzzle history.">
+  <title>Wordle TBT · Word Chronicle</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="game-shell history-shell">
+    <header class="header">
+      <a class="back-link" href="profile.html">← Player card</a>
+      <div>
+        <p class="eyebrow">THE PLAYER ARCHIVE</p>
+        <h1>WORD CHRONICLE</h1>
+        <p>Your completed weekly expeditions.</p>
+      </div>
+    </header>
+
+    <section id="history-loading" class="profile-loading" aria-live="polite">Opening your chronicle…</section>
+
+    <section id="history-signed-out" class="profile-signed-out" hidden>
+      <p class="eyebrow">PRIVATE ARCHIVE</p>
+      <h2>Your story is waiting.</h2>
+      <p>Sign in to view your own completed Wordle journeys.</p>
+      <button id="history-sign-in" class="google-button" type="button">Continue with Google</button>
+    </section>
+
+    <section id="history-content" class="history-content" hidden aria-labelledby="history-title">
+      <div class="history-heading">
+        <div>
+          <p class="eyebrow">YOUR RECORD</p>
+          <h2 id="history-title">Completed puzzles</h2>
+        </div>
+        <span id="history-count" class="planner-count">0 entries</span>
+      </div>
+      <div id="history-list" class="history-list"></div>
+    </section>
+  </main>
+  <script type="module" src="history.js"></script>
+</body>
+</html>
