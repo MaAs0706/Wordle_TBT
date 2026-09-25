@@ -135,19 +135,28 @@ async function loadGame() {
       activeGuess: "",
       finished: puzzle.finished,
       solved: puzzle.solved,
+      playWindowOpen: puzzle.playWindowOpen,
       currentStreak: puzzle.currentStreak,
       totalPoints: puzzle.totalPoints,
       allTimeRank: puzzle.allTimeRank,
     };
 
     guessInput.maxLength = game.wordLength;
-    guessButton.disabled = game.finished;
+    guessButton.disabled = game.finished || !game.playWindowOpen;
     completedShareButton.hidden = !(game.finished && game.solved);
     streakCount.textContent = puzzle.currentStreak;
     guessRule.textContent = game.finished
       ? "Puzzle complete"
-      : `Guess ${Math.min(game.guesses.length + 1, game.maxGuesses)} of ${game.maxGuesses}`;
-    setStatus(game.finished ? "You have already completed this week’s puzzle." : "Type your guess.");
+      : game.playWindowOpen
+        ? `Guess ${Math.min(game.guesses.length + 1, game.maxGuesses)} of ${game.maxGuesses}`
+        : "This week’s play window has ended";
+    setStatus(
+      game.finished
+        ? "You have already completed this week’s puzzle."
+        : game.playWindowOpen
+          ? "Type your guess."
+          : "This week’s play window closed at midnight IST. A new word arrives next Thursday.",
+    );
     renderBoard();
     loadLeaderboard(game.date);
   } catch (error) {
@@ -183,7 +192,7 @@ function renderBoard(revealedRowIndex = null, celebrateWin = false) {
   for (let rowIndex = 0; rowIndex < game.maxGuesses; rowIndex += 1) {
     const row = document.createElement("div");
     const submittedGuess = game.guesses[rowIndex];
-    const isActiveRow = rowIndex === game.guesses.length && !game.finished;
+    const isActiveRow = rowIndex === game.guesses.length && !game.finished && game.playWindowOpen;
 
     row.className = "row";
     row.dataset.rowIndex = rowIndex;
@@ -280,7 +289,7 @@ function createKey(label, extraClass = "", state = "") {
 }
 
 function addLetter(letter) {
-  if (!game || game.finished || game.activeGuess.length >= game.wordLength) return;
+  if (!game || game.finished || !game.playWindowOpen || game.activeGuess.length >= game.wordLength) return;
   if (getKeyStates()[letter.toLowerCase()] === "absent") return;
 
   game.activeGuess += letter.toUpperCase();
@@ -288,14 +297,14 @@ function addLetter(letter) {
 }
 
 function removeLetter() {
-  if (!game || game.finished) return;
+  if (!game || game.finished || !game.playWindowOpen) return;
 
   game.activeGuess = game.activeGuess.slice(0, -1);
   renderBoard();
 }
 
 async function submitGuess() {
-  if (!game || game.finished || isSubmitting) return;
+  if (!game || game.finished || !game.playWindowOpen || isSubmitting) return;
 
   const guess = game.activeGuess.toLowerCase();
 
@@ -318,7 +327,7 @@ async function submitGuess() {
     game.totalPoints = result.totalPoints || game.totalPoints;
     game.allTimeRank = result.allTimeRank || game.allTimeRank;
     game.activeGuess = "";
-    guessButton.disabled = game.finished;
+    guessButton.disabled = game.finished || !game.playWindowOpen;
     completedShareButton.hidden = !(game.finished && game.solved);
     guessRule.textContent = game.finished
       ? "Puzzle complete"

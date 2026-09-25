@@ -41,6 +41,10 @@ function getWeekKey(date = new Date()) {
   return calendarDate.toISOString().slice(0, 10);
 }
 
+function isWeeklyPlayWindowOpen(date = new Date()) {
+  return getDateKey(date) === getWeekKey(date);
+}
+
 function getPreviousWeekKey(weekKey) {
   const weekStart = new Date(`${weekKey}T00:00:00Z`);
   weekStart.setUTCDate(weekStart.getUTCDate() - 7);
@@ -160,6 +164,7 @@ async function backfillAllTimeLeaderboard(database) {
 async function startPuzzle(user) {
   const { database } = getFirebaseAdmin();
   const weekKey = getWeekKey();
+  const playWindowOpen = isWeeklyPlayWindowOpen();
   const sessionReference = database.doc(`gameSessions/${weekKey}_${user.uid}`);
   const [puzzleRecord, userProfile, sessionSnapshot] = await Promise.all([
     getWeeklyPuzzle(database, weekKey),
@@ -170,7 +175,7 @@ async function startPuzzle(user) {
   const puzzleVersion = getPuzzleVersion(puzzle, puzzleRecord.puzzleKey);
   let session = sessionSnapshot;
 
-  if (!session.exists && puzzleRecord.puzzleKey !== weekKey) {
+  if (playWindowOpen && !session.exists && puzzleRecord.puzzleKey !== weekKey) {
     const legacySession = await database.doc(`gameSessions/${puzzleRecord.puzzleKey}_${user.uid}`).get();
 
     if (legacySession.exists && legacySession.data().puzzleVersion === puzzleVersion) {
@@ -193,7 +198,7 @@ async function startPuzzle(user) {
     }
   }
 
-  if (!session.exists || session.data().puzzleVersion !== puzzleVersion) {
+  if (playWindowOpen && (!session.exists || session.data().puzzleVersion !== puzzleVersion)) {
     const data = {
       date: weekKey,
       userId: user.uid,
@@ -206,7 +211,9 @@ async function startPuzzle(user) {
     session = { data: () => data };
   }
 
-  const sessionData = session.data();
+  const sessionData = !session.exists && !playWindowOpen
+    ? { guesses: [], finished: false, solved: false }
+    : session.data();
   let allTimeRank = null;
 
   if (sessionData.solved) {
@@ -222,6 +229,7 @@ async function startPuzzle(user) {
     date: weekKey,
     wordLength: puzzle.wordLength,
     maxGuesses: puzzle.wordLength + 1,
+    playWindowOpen,
     guesses: sessionData.guesses,
     finished: sessionData.finished,
     solved: sessionData.solved || false,
@@ -233,6 +241,9 @@ async function startPuzzle(user) {
 
 async function submitGuess(user, guess) {
   const { database } = getFirebaseAdmin();
+  if (!isWeeklyPlayWindowOpen()) {
+    throw new Error("This week’s play window closed at midnight IST. A new word arrives next Thursday.");
+  }
   const date = getWeekKey();
   const puzzlePromise = getWeeklyPuzzle(database, date);
   const sessionReference = database.doc(`gameSessions/${date}_${user.uid}`);
