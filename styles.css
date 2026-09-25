@@ -1662,41 +1662,51 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 }
 
 .analytics-traffic-chart {
-  display: grid;
-  grid-template-columns: repeat(30, minmax(0, 1fr));
-  gap: 4px;
-  height: 156px;
-  margin-top: 17px;
-  padding: 12px 4px 25px;
-  border-bottom: 1px solid rgb(112 145 199 / 24%);
-  background: repeating-linear-gradient(to bottom, transparent 0, transparent 38px, rgb(131 158 206 / 10%) 39px);
+  height: 210px;
+  margin-top: 16px;
 }
 
-.analytics-traffic-column {
-  position: relative;
-  display: flex;
-  align-items: end;
-  min-width: 0;
-}
-
-.analytics-traffic-column > span {
+.analytics-traffic-line {
+  display: block;
   width: 100%;
-  height: var(--traffic-height);
-  min-height: 0;
-  border-radius: 4px 4px 1px 1px;
-  background: linear-gradient(to top, #416ee0, #a8c5ff);
-  box-shadow: 0 0 12px rgb(96 146 255 / 35%);
-  transition: height .35s ease;
+  height: 100%;
+  overflow: visible;
 }
 
-.analytics-traffic-column small {
-  position: absolute;
-  bottom: -20px;
-  left: 50%;
-  color: #8295b8;
-  font-size: .5rem;
-  white-space: nowrap;
-  transform: translateX(-50%);
+.analytics-traffic-guide {
+  stroke: rgb(131 158 206 / 18%);
+  stroke-width: 1;
+}
+
+.analytics-traffic-area { fill: url(#traffic-gradient); fill-opacity: .16; }
+
+.analytics-traffic-path {
+  fill: none;
+  stroke: #8eb4ff;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 5px rgb(103 151 255 / 52%));
+}
+
+.analytics-traffic-dot {
+  fill: #d9e6ff;
+  stroke: #4778e2;
+  stroke-width: 3;
+  cursor: default;
+  transition: r .15s ease, fill .15s ease;
+}
+
+.analytics-traffic-dot:hover,
+.analytics-traffic-dot:focus {
+  fill: #fff;
+  r: 6;
+  outline: none;
+}
+
+.analytics-traffic-label {
+  fill: #8295b8;
+  font-size: 12px;
 }
 
 /* The Observatory intentionally has its own dark operations-room theme. */
@@ -1999,8 +2009,8 @@ button:disabled { cursor: not-allowed; opacity: .55; }
   .analytics-traffic-summary { gap: 6px; }
   .analytics-traffic-metric { padding: 9px; }
   .analytics-traffic-metric strong { font-size: 1rem; }
-  .analytics-traffic-chart { gap: 2px; }
-  .analytics-traffic-column small { font-size: .43rem; }
+  .analytics-traffic-chart { height: 178px; }
+  .analytics-traffic-label { font-size: 10px; }
   .analytics-two-column { grid-template-columns: 1fr; gap: 0; }
   .analytics-two-column .analytics-panel { margin-top: 14px; }
   .unsolved-heading { flex-direction: column; }

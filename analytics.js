@@ -120,22 +120,88 @@ function renderTraffic(traffic, overview) {
   });
 
   trafficChart.replaceChildren();
-  timeline.forEach((day, index) => {
-    const column = document.createElement("div");
-    column.className = "analytics-traffic-column";
-    column.title = `${formatTrafficDate(day.date)}: ${day.visits} tracked visit${day.visits === 1 ? "" : "s"}`;
-    column.setAttribute("aria-label", column.title);
+  const namespace = "http://www.w3.org/2000/svg";
+  const width = 1000;
+  const height = 210;
+  const padding = { top: 18, right: 18, bottom: 37, left: 36 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+  const x = (index) => padding.left + (index / Math.max(timeline.length - 1, 1)) * chartWidth;
+  const y = (visits) => padding.top + chartHeight - (visits / maximum) * chartHeight;
+  const svg = document.createElementNS(namespace, "svg");
+  svg.classList.add("analytics-traffic-line");
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", "Daily tracked visitor activity across the last 30 days");
 
-    const bar = document.createElement("span");
-    bar.style.setProperty("--traffic-height", `${Math.max((day.visits / maximum) * 100, day.visits ? 5 : 0)}%`);
-    column.append(bar);
+  const definitions = document.createElementNS(namespace, "defs");
+  const gradient = document.createElementNS(namespace, "linearGradient");
+  gradient.setAttribute("id", "traffic-gradient");
+  gradient.setAttribute("x1", "0");
+  gradient.setAttribute("x2", "0");
+  gradient.setAttribute("y1", "0");
+  gradient.setAttribute("y2", "1");
+  const brightStop = document.createElementNS(namespace, "stop");
+  brightStop.setAttribute("offset", "0%");
+  brightStop.setAttribute("stop-color", "#789fff");
+  const clearStop = document.createElementNS(namespace, "stop");
+  clearStop.setAttribute("offset", "100%");
+  clearStop.setAttribute("stop-color", "#789fff");
+  clearStop.setAttribute("stop-opacity", "0");
+  gradient.append(brightStop, clearStop);
+  definitions.append(gradient);
+  svg.append(definitions);
+
+  [0, .5, 1].forEach((position) => {
+    const guide = document.createElementNS(namespace, "line");
+    const guideY = padding.top + chartHeight - chartHeight * position;
+    guide.setAttribute("x1", padding.left);
+    guide.setAttribute("x2", width - padding.right);
+    guide.setAttribute("y1", guideY);
+    guide.setAttribute("y2", guideY);
+    guide.classList.add("analytics-traffic-guide");
+    svg.append(guide);
+  });
+
+  if (timeline.length) {
+    const points = timeline.map((day, index) => `${x(index)},${y(day.visits)}`).join(" ");
+    const area = document.createElementNS(namespace, "polygon");
+    area.setAttribute("points", `${x(0)},${padding.top + chartHeight} ${points} ${x(timeline.length - 1)},${padding.top + chartHeight}`);
+    area.classList.add("analytics-traffic-area");
+    svg.append(area);
+
+    const line = document.createElementNS(namespace, "polyline");
+    line.setAttribute("points", points);
+    line.classList.add("analytics-traffic-path");
+    svg.append(line);
+  }
+
+  timeline.forEach((day, index) => {
+    const dot = document.createElementNS(namespace, "circle");
+    const label = `${formatTrafficDate(day.date)}: ${day.visits} tracked visit${day.visits === 1 ? "" : "s"}`;
+    dot.setAttribute("cx", x(index));
+    dot.setAttribute("cy", y(day.visits));
+    dot.setAttribute("r", "4");
+    dot.classList.add("analytics-traffic-dot");
+    dot.setAttribute("tabindex", "0");
+    dot.setAttribute("aria-label", label);
+    const title = document.createElementNS(namespace, "title");
+    title.textContent = label;
+    dot.append(title);
+    svg.append(dot);
 
     if (index === 0 || index === timeline.length - 1 || index % 7 === 1) {
-      addText(column, "small", formatTrafficDate(day.date));
+      const dateLabel = document.createElementNS(namespace, "text");
+      dateLabel.setAttribute("x", x(index));
+      dateLabel.setAttribute("y", height - 12);
+      dateLabel.setAttribute("text-anchor", index === 0 ? "start" : index === timeline.length - 1 ? "end" : "middle");
+      dateLabel.classList.add("analytics-traffic-label");
+      dateLabel.textContent = formatTrafficDate(day.date);
+      svg.append(dateLabel);
     }
-
-    trafficChart.append(column);
   });
+
+  trafficChart.append(svg);
 }
 
 function renderCurrentWeek(week) {
