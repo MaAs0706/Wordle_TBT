@@ -1,6 +1,7 @@
 const { cert, getApps, initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
 const { FieldValue, getFirestore, Timestamp } = require("firebase-admin/firestore");
+const validWords = new Set(require("./valid-words.json"));
 
 let cachedPuzzle;
 const WEEKLY_PUZZLE_START = "2026-09-24";
@@ -76,6 +77,10 @@ function scoreGuess(guess, answer) {
   });
 
   return result;
+}
+
+function isValidGameWord(word) {
+  return /^[a-z]{5,7}$/.test(word) && validWords.has(word);
 }
 
 function getPuzzleVersion(puzzle, date) {
@@ -265,6 +270,7 @@ async function submitGuess(user, guess) {
       throw new Error("A newer puzzle is available. Reload the page to play it.");
     }
     if (!/^[a-z]+$/.test(guess) || guess.length !== puzzle.wordLength) throw new Error(`Enter exactly ${puzzle.wordLength} letters.`);
+    if (!validWords.has(guess)) throw new Error("That word is not in the Wordle TBT dictionary.");
     if (session.finished) throw new Error("This week’s puzzle is already complete.");
 
     const guesses = [...session.guesses, { word: guess, result: scoreGuess(guess, puzzle.answer) }];
@@ -749,7 +755,9 @@ module.exports = async (request, response) => {
     if (action === "publish" && request.method === "POST") {
       if (!await isAdmin(database, user.uid)) return response.status(403).json({ error: "Admin access is required." });
       const word = String(request.body.word || "").trim().toLowerCase();
-      if (!/^[a-z]{5,}$/.test(word)) return response.status(400).json({ error: "Use a word with at least 5 letters." });
+      if (!isValidGameWord(word)) {
+        return response.status(400).json({ error: "Use a valid English word with 5 to 7 letters." });
+      }
       const date = String(request.body.date || getWeekKey());
       const existingPuzzle = await database.doc(`privatePuzzles/${date}`).get();
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < getWeekKey()) {
