@@ -18,6 +18,7 @@ const signInButton = document.querySelector("#analytics-sign-in");
 const overviewGrid = document.querySelector("#overview-grid");
 const currentWeekWord = document.querySelector("#current-week-word");
 const currentWeekGrid = document.querySelector("#current-week-grid");
+const currentWeekChart = document.querySelector("#current-week-chart");
 const weeklyCount = document.querySelector("#weekly-count");
 const weeklyStats = document.querySelector("#weekly-stats");
 const topStreaks = document.querySelector("#top-streaks");
@@ -109,6 +110,41 @@ function renderCurrentWeek(week) {
     addText(item, "strong", value.toString());
     currentWeekGrid.append(item);
   });
+
+  currentWeekChart.replaceChildren();
+  const chartHeader = document.createElement("div");
+  chartHeader.className = "analytics-chart-header";
+  addText(chartHeader, "span", "PLAYER OUTCOMES");
+  addText(chartHeader, "strong", `${week.players} total`);
+  currentWeekChart.append(chartHeader);
+
+  const outcomes = [
+    ["Solved", week.wins, "solved"],
+    ["Out of guesses", week.losses, "lost"],
+    ["Unfinished", week.unfinished, "unfinished"],
+  ];
+  const bar = document.createElement("div");
+  bar.className = "analytics-outcome-bar";
+  const total = Math.max(week.players, 1);
+  outcomes.forEach(([, value, state]) => {
+    const segment = document.createElement("span");
+    segment.className = `analytics-outcome-segment ${state}`;
+    segment.style.setProperty("--outcome-share", `${(value / total) * 100}%`);
+    bar.append(segment);
+  });
+  currentWeekChart.append(bar);
+
+  const legend = document.createElement("div");
+  legend.className = "analytics-outcome-legend";
+  outcomes.forEach(([label, value, state]) => {
+    const item = document.createElement("span");
+    item.className = `analytics-legend-item ${state}`;
+    addText(item, "i", "");
+    addText(item, "b", value.toString());
+    addText(item, "span", label);
+    legend.append(item);
+  });
+  currentWeekChart.append(legend);
 }
 
 function renderWeeklyStats(weeks) {
