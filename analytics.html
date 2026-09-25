@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Private Wordle TBT admin analytics.">
+  <title>Wordle TBT · Word Keeper’s Observatory</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main id="analytics-shell" class="game-shell analytics-shell" hidden>
+    <header class="header">
+      <a class="back-link" href="planner.html">← Puzzle Vault</a>
+      <div>
+        <p class="eyebrow">PRIVATE ADMIN ANALYTICS</p>
+        <h1>OBSERVATORY</h1>
+        <p>Read the story behind every weekly word.</p>
+      </div>
+    </header>
+
+    <p id="analytics-loading" class="profile-loading" aria-live="polite">Opening the observatory…</p>
+
+    <section id="analytics-signed-out" class="profile-signed-out" hidden>
+      <p class="eyebrow">ADMIN ACCESS</p>
+      <h2>Sign in to open the observatory.</h2>
+      <p>Only approved Word Keepers can view player records and weekly performance.</p>
+      <button id="analytics-sign-in" class="google-button" type="button">Continue with Google</button>
+    </section>
+
+    <section id="analytics-content" hidden>
+      <div class="analytics-toolbar">
+        <div>
+          <p class="eyebrow">WORD KEEPER’S VIEW</p>
+          <h2>Game health at a glance</h2>
+        </div>
+        <button id="analytics-refresh" class="analytics-refresh" type="button">Refresh records</button>
+      </div>
+
+      <section id="overview-grid" class="analytics-metrics" aria-label="Overall game statistics"></section>
+
+      <section class="analytics-panel current-week-panel" aria-labelledby="current-week-title">
+        <div class="analytics-panel-heading">
+          <div>
+            <p class="eyebrow">THIS WEEK</p>
+            <h2 id="current-week-title">Current word performance</h2>
+          </div>
+          <span id="current-week-word" class="analytics-word">WORD UNAVAILABLE</span>
+        </div>
+        <div id="current-week-grid" class="analytics-current-grid"></div>
+      </section>
+
+      <section class="analytics-panel" aria-labelledby="weekly-performance-title">
+        <div class="analytics-panel-heading">
+          <div>
+            <p class="eyebrow">WEEK BY WEEK</p>
+            <h2 id="weekly-performance-title">Puzzle performance archive</h2>
+          </div>
+          <span id="weekly-count" class="planner-count">0 weeks</span>
+        </div>
+        <div id="weekly-stats" class="analytics-week-grid"></div>
+      </section>
+
+      <section class="analytics-two-column" aria-label="Player leaderboards">
+        <section class="analytics-panel">
+          <div class="analytics-panel-heading">
+            <div><p class="eyebrow">STREAK WATCH</p><h2>Longest active streaks</h2></div>
+          </div>
+          <ol id="top-streaks" class="analytics-rank-list"></ol>
+        </section>
+        <section class="analytics-panel">
+          <div class="analytics-panel-heading">
+            <div><p class="eyebrow">HALL LEADERS</p><h2>Most star points</h2></div>
+          </div>
+          <ol id="all-time-leaders" class="analytics-rank-list"></ol>
+        </section>
+      </section>
+
+      <section class="analytics-two-column" aria-label="Weekly player performance">
+        <section class="analytics-panel">
+          <div class="analytics-panel-heading">
+            <div><p class="eyebrow">THIS WEEK</p><h2>Best solves</h2></div>
+          </div>
+          <ol id="weekly-leaders" class="analytics-rank-list"></ol>
+        </section>
+        <section class="analytics-panel">
+          <div class="analytics-panel-heading">
+            <div><p class="eyebrow">ALL TIME</p><h2>Fastest completed solves</h2></div>
+          </div>
+          <ol id="fastest-solves" class="analytics-rank-list"></ol>
+        </section>
+      </section>
+
+      <section class="analytics-panel review-panel" aria-labelledby="review-title">
+        <div class="analytics-panel-heading">
+          <div>
+            <p class="eyebrow">REVIEW QUEUE</p>
+            <h2 id="review-title">Unusually quick solves</h2>
+          </div>
+          <span class="analytics-note">One guess in 10 seconds or less</span>
+        </div>
+        <p class="analytics-description">These are not automatically cheating—this is simply a place to review unusual results if needed.</p>
+        <ol id="quick-solves" class="analytics-rank-list compact-rank-list"></ol>
+      </section>
+
+      <section class="analytics-panel unsolved-panel" aria-labelledby="unsolved-title">
+        <div class="analytics-panel-heading unsolved-heading">
+          <div>
+            <p class="eyebrow">UNSOLVED ATTEMPTS</p>
+            <h2 id="unsolved-title">Players who did not solve</h2>
+          </div>
+          <label class="analytics-filter" for="unsolved-week-filter">
+            <span>Show week</span>
+            <select id="unsolved-week-filter"></select>
+          </label>
+        </div>
+        <div class="analytics-table-wrap">
+          <table class="analytics-table">
+            <thead>
+              <tr>
+                <th>Player</th>
+                <th>Week / word</th>
+                <th>Progress</th>
+                <th>Status</th>
+                <th>Last active</th>
+              </tr>
+            </thead>
+            <tbody id="unsolved-attempts"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </main>
+  <script type="module" src="analytics.js"></script>
+</body>
+</html>

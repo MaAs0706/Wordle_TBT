@@ -202,6 +202,7 @@ async function startPuzzle(user) {
     const data = {
       date: weekKey,
       userId: user.uid,
+      displayName: user.name || "Player",
       puzzleVersion,
       guesses: [],
       finished: false,
@@ -460,6 +461,188 @@ async function getPlayerStats(user) {
   };
 }
 
+function getTimestampMilliseconds(timestamp) {
+  if (typeof timestamp?.toDate === "function") return timestamp.toDate().getTime();
+  if (typeof timestamp?.seconds === "number") return timestamp.seconds * 1000;
+  return 0;
+}
+
+function formatAnalyticsDate(timestamp) {
+  const milliseconds = getTimestampMilliseconds(timestamp);
+  return milliseconds ? getDateKey(new Date(milliseconds)) : null;
+}
+
+function rankCompletedSessions(sessions) {
+  return sessions
+    .filter((session) => session.solved)
+    .sort((first, second) => {
+      if (first.guessesUsed !== second.guessesUsed) return first.guessesUsed - second.guessesUsed;
+      const firstDuration = first.durationSeconds ?? Number.MAX_SAFE_INTEGER;
+      const secondDuration = second.durationSeconds ?? Number.MAX_SAFE_INTEGER;
+      if (firstDuration !== secondDuration) return firstDuration - secondDuration;
+      return first.completedAt - second.completedAt;
+    });
+}
+
+async function getAdminAnalytics(database) {
+  const [sessionsSnapshot, usersSnapshot, puzzlesSnapshot, allTimeScoresSnapshot] = await Promise.all([
+    database.collection("gameSessions").get(),
+    database.collection("users").get(),
+    database.collection("privatePuzzles").get(),
+    database.collection("leaderboards/all-time/scores").get(),
+  ]);
+  const profiles = new Map(usersSnapshot.docs.map((profile) => [profile.id, profile.data()]));
+  const puzzleWords = new Map(
+    puzzlesSnapshot.docs.map((puzzle) => [puzzle.id, puzzle.data().answer?.toUpperCase() || null]),
+  );
+  const uniqueSessions = new Map();
+
+  sessionsSnapshot.docs.forEach((document) => {
+    const session = document.data();
+    if (!session.userId || !/^\d{4}-\d{2}-\d{2}$/.test(session.date || "")) return;
+
+    const weekKey = getWeekKey(new Date(`${session.date}T00:00:00Z`));
+    const updatedAt = getTimestampMilliseconds(session.updatedAt || session.completedAt || session.startedAt);
+    const key = `${weekKey}:${session.userId}`;
+    const existing = uniqueSessions.get(key);
+
+    if (existing && existing.updatedAt >= updatedAt) return;
+
+    const guesses = Array.isArray(session.guesses) ? session.guesses : [];
+    const startedAt = getTimestampMilliseconds(session.startedAt);
+    const completedAt = getTimestampMilliseconds(session.completedAt);
+    const profile = profiles.get(session.userId) || {};
+    uniqueSessions.set(key, {
+      userId: session.userId,
+      displayName: session.displayName || profile.displayName || "Player",
+      weekKey,
+      guessesUsed: guesses.length,
+      maxGuesses: (guesses[0]?.word?.length || puzzleWords.get(weekKey)?.length || 5) + 1,
+      finished: Boolean(session.finished),
+      solved: Boolean(session.solved),
+      durationSeconds: startedAt && completedAt ? Math.max(0, Math.round((completedAt - startedAt) / 1000)) : null,
+      startedAt,
+      completedAt,
+      updatedAt,
+      lastActiveDate: formatAnalyticsDate(session.updatedAt || session.completedAt || session.startedAt),
+    });
+  });
+
+  const sessions = [...uniqueSessions.values()];
+  const sessionsByWeek = new Map();
+  sessions.forEach((session) => {
+    const weeklySessions = sessionsByWeek.get(session.weekKey) || [];
+    weeklySessions.push(session);
+    sessionsByWeek.set(session.weekKey, weeklySessions);
+  });
+
+  const currentWeekKey = getWeekKey();
+  const allWeekKeys = new Set([
+    ...sessionsByWeek.keys(),
+    ...[...puzzleWords.keys()].filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date) && date <= currentWeekKey),
+  ]);
+  const weeklyStats = [...allWeekKeys]
+    .sort((first, second) => second.localeCompare(first))
+    .slice(0, 52)
+    .map((weekKey) => {
+      const weeklySessions = sessionsByWeek.get(weekKey) || [];
+      const completed = weeklySessions.filter((session) => session.finished);
+      const wins = completed.filter((session) => session.solved);
+      const durations = wins.map((session) => session.durationSeconds).filter((duration) => duration !== null);
+      const guesses = wins.map((session) => session.guessesUsed);
+
+      return {
+        weekKey,
+        word: puzzleWords.get(weekKey) || null,
+        players: weeklySessions.length,
+        completed: completed.length,
+        wins: wins.length,
+        losses: completed.length - wins.length,
+        unfinished: weeklySessions.length - completed.length,
+        winRate: completed.length ? Math.round((wins.length / completed.length) * 100) : 0,
+        averageGuesses: guesses.length
+          ? Number((guesses.reduce((total, value) => total + value, 0) / guesses.length).toFixed(1))
+          : null,
+        averageDurationSeconds: durations.length
+          ? Math.round(durations.reduce((total, value) => total + value, 0) / durations.length)
+          : null,
+      };
+    });
+  const currentWeek = weeklyStats.find((week) => week.weekKey === currentWeekKey) || {
+    weekKey: currentWeekKey,
+    word: puzzleWords.get(currentWeekKey) || null,
+    players: 0,
+    completed: 0,
+    wins: 0,
+    losses: 0,
+    unfinished: 0,
+    winRate: 0,
+    averageGuesses: null,
+    averageDurationSeconds: null,
+  };
+  const firstWeekByPlayer = new Map();
+  sessions.forEach((session) => {
+    const firstWeek = firstWeekByPlayer.get(session.userId);
+    if (!firstWeek || session.weekKey < firstWeek) firstWeekByPlayer.set(session.userId, session.weekKey);
+  });
+  const profileRows = usersSnapshot.docs.map((profile) => ({
+    userId: profile.id,
+    displayName: profile.data().displayName || "Player",
+    currentStreak: profile.data().currentStreak || 0,
+    bestStreak: profile.data().bestStreak || 0,
+    totalPoints: profile.data().totalPoints || 0,
+  }));
+  const allTimeScores = allTimeScoresSnapshot.docs.map((score) => ({
+    userId: score.id,
+    displayName: score.data().displayName || profiles.get(score.id)?.displayName || "Player",
+    totalPoints: score.data().totalPoints || 0,
+    currentStreak: score.data().currentStreak || 0,
+    bestStreak: score.data().bestStreak || 0,
+  }));
+  const currentWeekSessions = sessionsByWeek.get(currentWeekKey) || [];
+  const topWeekly = rankCompletedSessions(currentWeekSessions).slice(0, 10);
+  const fastestSolves = rankCompletedSessions(sessions)
+    .filter((session) => session.durationSeconds !== null)
+    .sort((first, second) => first.durationSeconds - second.durationSeconds || first.guessesUsed - second.guessesUsed)
+    .slice(0, 10);
+  const unsolvedAttempts = sessions
+    .filter((session) => !session.solved)
+    .sort((first, second) => second.updatedAt - first.updatedAt)
+    .slice(0, 100)
+    .map((session) => ({
+      ...session,
+      word: puzzleWords.get(session.weekKey) || null,
+      status: session.finished ? "Out of guesses" : "Left unfinished",
+    }));
+  const quickSolves = rankCompletedSessions(sessions)
+    .filter((session) => session.guessesUsed === 1 && session.durationSeconds !== null && session.durationSeconds <= 10)
+    .slice(0, 20);
+
+  return {
+    generatedAt: getDateKey(),
+    overview: {
+      totalPlayers: new Set(sessions.map((session) => session.userId)).size,
+      totalGames: sessions.length,
+      totalWins: sessions.filter((session) => session.solved).length,
+      totalCompleted: sessions.filter((session) => session.finished).length,
+      currentWeekPlayers: currentWeek.players,
+      newPlayersThisWeek: [...firstWeekByPlayer.values()].filter((weekKey) => weekKey === currentWeekKey).length,
+    },
+    currentWeek,
+    weeklyStats,
+    topStreaks: [...profileRows]
+      .sort((first, second) => second.currentStreak - first.currentStreak || second.bestStreak - first.bestStreak || second.totalPoints - first.totalPoints)
+      .slice(0, 10),
+    allTimeLeaders: allTimeScores
+      .sort((first, second) => second.totalPoints - first.totalPoints || second.bestStreak - first.bestStreak)
+      .slice(0, 10),
+    topWeekly,
+    fastestSolves,
+    quickSolves,
+    unsolvedAttempts,
+  };
+}
+
 module.exports = async (request, response) => {
   try {
     const action = request.query.action;
@@ -496,6 +679,10 @@ module.exports = async (request, response) => {
     if (action === "player-stats") return response.status(200).json(await getPlayerStats(user));
     if (action === "player-history") return response.status(200).json(await getPlayerHistory(user));
     if (action === "admin-status") return response.status(200).json({ isAdmin: await isAdmin(database, user.uid) });
+    if (action === "admin-analytics") {
+      if (!await isAdmin(database, user.uid)) return response.status(403).json({ error: "Admin access is required." });
+      return response.status(200).json(await getAdminAnalytics(database));
+    }
     if (action === "admin-puzzles") {
       if (!await isAdmin(database, user.uid)) return response.status(403).json({ error: "Admin access is required." });
       const today = getWeekKey();
