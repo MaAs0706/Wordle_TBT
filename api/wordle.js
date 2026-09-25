@@ -492,6 +492,29 @@ async function getAdminAnalytics(database) {
     database.collection("leaderboards/all-time/scores").get(),
   ]);
   const profiles = new Map(usersSnapshot.docs.map((profile) => [profile.id, profile.data()]));
+  const today = getDateKey();
+  const trafficDays = Array.from({ length: 30 }, (_, index) => {
+    const date = new Date(`${today}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() - (29 - index));
+    return date.toISOString().slice(0, 10);
+  });
+  const trafficDates = new Set(trafficDays);
+  const visitsSnapshot = await database
+    .collection("analyticsVisits")
+    .where("date", ">=", trafficDays[0])
+    .get();
+  const recentVisits = visitsSnapshot.docs
+    .map((visit) => visit.data())
+    .filter((visit) => trafficDates.has(visit.date));
+  const trafficTimeline = trafficDays.map((date) => {
+    const visits = recentVisits.filter((visit) => visit.date === date);
+
+    return {
+      date,
+      visits: visits.length,
+      visitors: new Set(visits.map((visit) => visit.visitorId)).size,
+    };
+  });
   const puzzleWords = new Map(
     puzzlesSnapshot.docs.map((puzzle) => [puzzle.id, puzzle.data().answer?.toUpperCase() || null]),
   );
@@ -627,6 +650,12 @@ async function getAdminAnalytics(database) {
       totalCompleted: sessions.filter((session) => session.finished).length,
       currentWeekPlayers: currentWeek.players,
       newPlayersThisWeek: [...firstWeekByPlayer.values()].filter((weekKey) => weekKey === currentWeekKey).length,
+      pageVisits: recentVisits.length,
+      uniqueVisitors: new Set(recentVisits.map((visit) => visit.visitorId)).size,
+    },
+    traffic: {
+      todayVisits: trafficTimeline.at(-1)?.visits || 0,
+      timeline: trafficTimeline,
     },
     currentWeek,
     weeklyStats,
@@ -646,6 +675,15 @@ async function getAdminAnalytics(database) {
 module.exports = async (request, response) => {
   try {
     const action = request.query.action;
+    if (action === "track-visit" && request.method === "POST") {
+      const page = String(request.body?.page || "");
+      const visitorId = String(request.body?.visitorId || "");
+      if (!/^[a-z-]{2,30}$/.test(page) || !/^[a-f0-9-]{20,60}$/i.test(visitorId)) return response.status(400).json({ error: "Invalid visit." });
+      const { database } = getFirebaseAdmin();
+      const date = getDateKey();
+      await database.doc(`analyticsVisits/${date}_${page}_${visitorId}`).set({ date, page, visitorId, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+      return response.status(204).end();
+    }
     const user = await getUser(request);
     const { database } = getFirebaseAdmin();
 

@@ -19,7 +19,7 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body data-analytics-page="game">
   <main class="game-shell">
     <header class="header">
       <p class="streak-badge" aria-label="Current win streak">
@@ -102,6 +102,7 @@
     <button id="rules-continue" type="button">Let’s play</button>
   </dialog>
 
+  <script type="module" src="visit-tracker.js"></script>
   <script type="module" src="script.js"></script>
 </body>
 </html>

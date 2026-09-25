@@ -16,6 +16,8 @@ const content = document.querySelector("#analytics-content");
 const signedOutPanel = document.querySelector("#analytics-signed-out");
 const signInButton = document.querySelector("#analytics-sign-in");
 const overviewGrid = document.querySelector("#overview-grid");
+const trafficSummary = document.querySelector("#traffic-summary");
+const trafficChart = document.querySelector("#traffic-chart");
 const currentWeekWord = document.querySelector("#current-week-word");
 const currentWeekGrid = document.querySelector("#current-week-grid");
 const currentWeekChart = document.querySelector("#current-week-chart");
@@ -77,7 +79,7 @@ function renderOverview(overview) {
     ["WORD KEEPERS", overview.totalPlayers, "Players who have started a game"],
     ["GAMES STARTED", overview.totalGames, "Unique weekly attempts"],
     ["WINNING GAMES", overview.totalWins, "Players who solved a weekly word"],
-    ["THIS WEEK", overview.currentWeekPlayers, `${overview.newPlayersThisWeek} new player${overview.newPlayersThisWeek === 1 ? "" : "s"}`],
+    ["PAGE VISITS", overview.pageVisits, `${overview.uniqueVisitors} unique visitor${overview.uniqueVisitors === 1 ? "" : "s"} · last 30 days`],
   ];
 
   metrics.forEach(([label, value, copy], index) => {
@@ -88,6 +90,51 @@ function renderOverview(overview) {
     addText(card, "strong", value.toString(), "analytics-metric-value");
     addText(card, "small", copy, "analytics-metric-copy");
     overviewGrid.append(card);
+  });
+}
+
+function formatTrafficDate(date) {
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "numeric",
+    month: "short",
+  }).format(new Date(`${date}T00:00:00+05:30`));
+}
+
+function renderTraffic(traffic, overview) {
+  const timeline = traffic.timeline || [];
+  const maximum = Math.max(...timeline.map((day) => day.visits), 1);
+  const metrics = [
+    ["Tracked visits", overview.pageVisits],
+    ["Unique visitors", overview.uniqueVisitors],
+    ["Today", traffic.todayVisits],
+  ];
+
+  trafficSummary.replaceChildren();
+  metrics.forEach(([label, value]) => {
+    const metric = document.createElement("div");
+    metric.className = "analytics-traffic-metric";
+    addText(metric, "span", label);
+    addText(metric, "strong", value.toString());
+    trafficSummary.append(metric);
+  });
+
+  trafficChart.replaceChildren();
+  timeline.forEach((day, index) => {
+    const column = document.createElement("div");
+    column.className = "analytics-traffic-column";
+    column.title = `${formatTrafficDate(day.date)}: ${day.visits} tracked visit${day.visits === 1 ? "" : "s"}`;
+    column.setAttribute("aria-label", column.title);
+
+    const bar = document.createElement("span");
+    bar.style.setProperty("--traffic-height", `${Math.max((day.visits / maximum) * 100, day.visits ? 5 : 0)}%`);
+    column.append(bar);
+
+    if (index === 0 || index === timeline.length - 1 || index % 7 === 1) {
+      addText(column, "small", formatTrafficDate(day.date));
+    }
+
+    trafficChart.append(column);
   });
 }
 
@@ -126,6 +173,15 @@ function renderCurrentWeek(week) {
   const bar = document.createElement("div");
   bar.className = "analytics-outcome-bar";
   const total = Math.max(week.players, 1);
+  const solvedShare = (week.wins / total) * 100;
+  const lostShare = solvedShare + (week.losses / total) * 100;
+  const donut = document.createElement("div");
+  donut.className = "analytics-outcome-donut";
+  donut.style.background = `conic-gradient(#4ed49a 0 ${solvedShare}%, #f69d5d ${solvedShare}% ${lostShare}%, #687da8 ${lostShare}% 100%)`;
+  const donutLabel = document.createElement("span");
+  donutLabel.textContent = `${week.winRate}%`;
+  donut.append(donutLabel);
+  currentWeekChart.append(donut);
   outcomes.forEach(([, value, state]) => {
     const segment = document.createElement("span");
     segment.className = `analytics-outcome-segment ${state}`;
@@ -256,6 +312,7 @@ function populateWeekFilter(weeks) {
 function renderAnalytics(data) {
   analytics = data;
   renderOverview(data.overview);
+  renderTraffic(data.traffic, data.overview);
   renderCurrentWeek(data.currentWeek);
   renderWeeklyStats(data.weeklyStats);
   renderRankList(topStreaks, data.topStreaks, (entry) => `${entry.currentStreak}-week current · ${entry.bestStreak}-week best`, "Streak records will appear after the first solve.");
