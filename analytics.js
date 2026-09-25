@@ -75,7 +75,7 @@ function renderOverview(overview) {
   const metrics = [
     ["WORD KEEPERS", overview.totalPlayers, "Players who have started a game"],
     ["GAMES STARTED", overview.totalGames, "Unique weekly attempts"],
-    ["WORDS SOLVED", overview.totalWins, "Successful completed games"],
+    ["WINNING GAMES", overview.totalWins, "Players who solved a weekly word"],
     ["THIS WEEK", overview.currentWeekPlayers, `${overview.newPlayersThisWeek} new player${overview.newPlayersThisWeek === 1 ? "" : "s"}`],
   ];
 
