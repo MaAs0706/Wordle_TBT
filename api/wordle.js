@@ -102,6 +102,33 @@ async function isAdmin(database, userId) {
   return admin.exists;
 }
 
+async function getAdminAccessList(database) {
+  const { auth } = getFirebaseAdmin();
+  const admins = await database.collection("admins").get();
+  const records = await Promise.all(admins.docs.map(async (admin) => {
+    const data = admin.data();
+
+    try {
+      const account = await auth.getUser(admin.id);
+      return {
+        uid: admin.id,
+        email: account.email || data.email || "Unknown email",
+        displayName: account.displayName || data.displayName || "Admin",
+        grantedAt: data.grantedAt?.seconds || 0,
+      };
+    } catch {
+      return {
+        uid: admin.id,
+        email: data.email || "Unknown email",
+        displayName: data.displayName || "Admin",
+        grantedAt: data.grantedAt?.seconds || 0,
+      };
+    }
+  }));
+
+  return records.sort((first, second) => first.email.localeCompare(second.email));
+}
+
 async function getWeeklyPuzzle(database, weekKey) {
   if (cachedPuzzle?.weekKey === weekKey) {
     return cachedPuzzle;
@@ -723,6 +750,41 @@ module.exports = async (request, response) => {
     if (action === "player-stats") return response.status(200).json(await getPlayerStats(user));
     if (action === "player-history") return response.status(200).json(await getPlayerHistory(user));
     if (action === "admin-status") return response.status(200).json({ isAdmin: await isAdmin(database, user.uid) });
+    if (action === "admin-access") {
+      if (!await isAdmin(database, user.uid)) return response.status(403).json({ error: "Admin access is required." });
+      return response.status(200).json({ admins: await getAdminAccessList(database) });
+    }
+    if (action === "grant-admin" && request.method === "POST") {
+      if (!await isAdmin(database, user.uid)) return response.status(403).json({ error: "Admin access is required." });
+      const email = String(request.body.email || "").trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return response.status(400).json({ error: "Enter a valid email address." });
+      }
+
+      const { auth } = getFirebaseAdmin();
+      let account;
+      try {
+        account = await auth.getUserByEmail(email);
+      } catch {
+        return response.status(404).json({ error: "That person needs to sign in with Google once before you can grant access." });
+      }
+
+      const reference = database.doc(`admins/${account.uid}`);
+      const existing = await reference.get();
+      await reference.set({
+        email: account.email || email,
+        displayName: account.displayName || "Admin",
+        grantedBy: user.uid,
+        grantedAt: existing.data()?.grantedAt || FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      }, { merge: true });
+
+      return response.status(200).json({
+        email: account.email || email,
+        displayName: account.displayName || "Admin",
+        alreadyAdmin: existing.exists,
+      });
+    }
     if (action === "admin-analytics") {
       if (!await isAdmin(database, user.uid)) return response.status(403).json({ error: "Admin access is required." });
       return response.status(200).json(await getAdminAnalytics(database));

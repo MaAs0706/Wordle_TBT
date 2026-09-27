@@ -1259,6 +1259,70 @@ button:disabled { cursor: not-allowed; opacity: .55; }
   text-align: center;
 }
 
+.access-library { border-color: rgb(126 190 241 / 42%); }
+
+.admin-access-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 17px;
+}
+
+.admin-access-form label {
+  color: #e8f0ec;
+  font-size: .78rem;
+  font-weight: bold;
+}
+
+.admin-access-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.admin-access-controls input {
+  flex: 1;
+  min-width: 0;
+  min-height: 43px;
+  padding: 10px 12px;
+  border-color: rgb(141 197 241 / 48%);
+  background: rgb(4 36 43 / 62%);
+}
+
+.admin-access-controls button { white-space: nowrap; }
+
+.admin-list {
+  display: grid;
+  gap: 8px;
+  margin: 17px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  border: 1px solid rgb(151 197 237 / 25%);
+  border-radius: 9px;
+  background: linear-gradient(125deg, rgb(59 94 139 / 22%), rgb(7 35 48 / 52%));
+}
+
+.admin-list div { display: grid; gap: 2px; min-width: 0; }
+.admin-list strong { color: #e6f2ff; font-size: .8rem; }
+.admin-list div span { overflow: hidden; color: #b4cee9; font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
+
+.admin-role {
+  padding: 4px 7px;
+  border: 1px solid rgb(126 190 241 / 44%);
+  border-radius: 999px;
+  background: rgb(43 84 133 / 44%);
+  color: #c3ddff;
+  font-size: .62rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
 .admin-observatory-link {
   position: absolute;
   right: 0;
@@ -1987,6 +2051,8 @@ button:disabled { cursor: not-allowed; opacity: .55; }
   .planner-library { padding: 18px; }
   .planner-section-heading { align-items: start; }
   .puzzle-grid { grid-template-columns: 1fr; }
+  .admin-access-controls { flex-direction: column; }
+  .admin-access-controls button { width: 100%; }
 
   .admin-observatory-link {
     top: 12px;

@@ -47,7 +47,7 @@
           <label for="planner-date">Puzzle date</label>
           <input id="planner-date" type="date" required>
           <label for="planner-word">Secret word</label>
-          <input id="planner-word" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="At least 5 letters" required>
+          <input id="planner-word" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="5 to 7 letters" required>
           <p id="planner-message" class="form-message" aria-live="polite"></p>
           <button type="submit">Save puzzle</button>
         </form>
@@ -68,6 +68,26 @@
         </div>
         <p class="planner-note">Past words are preserved as history so completed games and scoreboards remain fair.</p>
         <div id="history-puzzles" class="puzzle-grid history-grid"></div>
+      </section>
+
+      <section class="planner-library access-library" aria-labelledby="access-title">
+        <div class="planner-section-heading">
+          <div>
+            <p class="eyebrow">ACCESS KEEPERS</p>
+            <h2 id="access-title">Admin access</h2>
+          </div>
+          <span id="admin-count" class="planner-count">0 admins</span>
+        </div>
+        <p class="planner-note">The person must sign in with their Google account once before you can give them access.</p>
+        <form id="grant-admin-form" class="admin-access-form">
+          <label for="admin-email">Google account email</label>
+          <div class="admin-access-controls">
+            <input id="admin-email" type="email" autocomplete="email" placeholder="name@example.com" required>
+            <button type="submit">Grant admin access</button>
+          </div>
+          <p id="admin-access-message" class="form-message" aria-live="polite"></p>
+        </form>
+        <ul id="admin-list" class="admin-list" aria-label="Current administrators"></ul>
       </section>
     </section>
   </main>

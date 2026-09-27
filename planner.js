@@ -24,6 +24,11 @@ const upcomingPuzzles = document.querySelector("#upcoming-puzzles");
 const historyPuzzles = document.querySelector("#history-puzzles");
 const upcomingCount = document.querySelector("#upcoming-count");
 const historyCount = document.querySelector("#history-count");
+const grantAdminForm = document.querySelector("#grant-admin-form");
+const adminEmail = document.querySelector("#admin-email");
+const adminAccessMessage = document.querySelector("#admin-access-message");
+const adminCount = document.querySelector("#admin-count");
+const adminList = document.querySelector("#admin-list");
 const rescheduleDialog = document.querySelector("#reschedule-dialog");
 const closeRescheduleButton = document.querySelector("#close-reschedule");
 const rescheduleForm = document.querySelector("#reschedule-form");
@@ -161,11 +166,36 @@ function renderPuzzleCards(puzzles, container, isEditable, today) {
 }
 
 async function loadPuzzleVault() {
-  const schedule = await callApi("admin-puzzles");
+  const [schedule, access] = await Promise.all([
+    callApi("admin-puzzles"),
+    callApi("admin-access"),
+  ]);
   upcomingCount.textContent = `${schedule.upcoming.length} scheduled`;
   historyCount.textContent = `${schedule.history.length} recorded`;
   renderPuzzleCards(schedule.upcoming, upcomingPuzzles, true, schedule.today);
   renderPuzzleCards(schedule.history, historyPuzzles, false, schedule.today);
+  renderAdminList(access.admins);
+}
+
+function renderAdminList(admins) {
+  adminCount.textContent = `${admins.length} admin${admins.length === 1 ? "" : "s"}`;
+  adminList.replaceChildren();
+
+  admins.forEach((admin) => {
+    const item = document.createElement("li");
+    const identity = document.createElement("div");
+    const name = document.createElement("strong");
+    const email = document.createElement("span");
+    name.textContent = admin.displayName;
+    email.textContent = admin.email;
+    identity.append(name, email);
+
+    const role = document.createElement("span");
+    role.className = "admin-role";
+    role.textContent = "Admin";
+    item.append(identity, role);
+    adminList.append(item);
+  });
 }
 
 async function savePuzzle(event) {
@@ -173,8 +203,8 @@ async function savePuzzle(event) {
   const word = plannerWord.value.trim().toLowerCase();
   const date = plannerDate.value;
 
-  if (!/^[a-z]{5,}$/.test(word)) {
-    plannerMessage.textContent = "Use at least 5 letters, with no spaces or symbols.";
+  if (!/^[a-z]{5,7}$/.test(word)) {
+    plannerMessage.textContent = "Use 5 to 7 letters, with no spaces or symbols.";
     plannerMessage.classList.add("error");
     return;
   }
@@ -192,6 +222,28 @@ async function savePuzzle(event) {
   } catch (error) {
     plannerMessage.textContent = error.message || "Could not save this puzzle.";
     plannerMessage.classList.add("error");
+  }
+}
+
+async function grantAdminAccess(event) {
+  event.preventDefault();
+  const email = adminEmail.value.trim();
+  adminAccessMessage.textContent = "";
+  adminAccessMessage.classList.remove("error");
+
+  try {
+    const result = await callApi("grant-admin", {
+      method: "POST",
+      body: { email },
+    });
+    adminAccessMessage.textContent = result.alreadyAdmin
+      ? `${result.email} already has admin access.`
+      : `Admin access granted to ${result.email}.`;
+    adminEmail.value = "";
+    await loadPuzzleVault();
+  } catch (error) {
+    adminAccessMessage.textContent = error.message || "Could not grant admin access.";
+    adminAccessMessage.classList.add("error");
   }
 }
 
@@ -256,6 +308,7 @@ signInButton.addEventListener("click", async () => {
 });
 
 plannerForm.addEventListener("submit", savePuzzle);
+grantAdminForm.addEventListener("submit", grantAdminAccess);
 rescheduleForm.addEventListener("submit", reschedulePuzzle);
 closeRescheduleButton.addEventListener("click", () => rescheduleDialog.close());
 
