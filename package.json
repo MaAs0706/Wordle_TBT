@@ -2,7 +2,7 @@
   "name": "wordle-tbt",
   "private": true,
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   },
   "dependencies": {
     "firebase-admin": "^13.0.0"
