@@ -175,6 +175,7 @@ async function loadPuzzleVault() {
   renderPuzzleCards(schedule.upcoming, upcomingPuzzles, true, schedule.today);
   renderPuzzleCards(schedule.history, historyPuzzles, false, schedule.today);
   renderAdminList(access.admins);
+  return schedule;
 }
 
 function renderAdminList(admins) {
@@ -330,8 +331,14 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     plannerDate.min = getIndiaWeekKey();
-    plannerDate.value = getNextIndiaWeekKey();
-    await loadPuzzleVault();
+    const schedule = await loadPuzzleVault();
+    const hasCurrentWeekPuzzle = schedule.upcoming.some((puzzle) => puzzle.date === schedule.today);
+    plannerDate.value = hasCurrentWeekPuzzle ? getNextIndiaWeekKey() : schedule.today;
+
+    if (!hasCurrentWeekPuzzle) {
+      plannerMessage.textContent = "This Thursday does not have a word yet. Publish one now to open this week’s game.";
+      plannerMessage.classList.remove("error");
+    }
     plannerLoading.hidden = true;
     plannerContent.hidden = false;
     plannerShell.hidden = false;
